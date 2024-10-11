@@ -560,6 +560,47 @@ class Player:
     def play(self) -> tuple[bool, int]:
         return False, 0;
 
+# an abstract Player that provides support for a staggered layout
+class StaggeredPlayer(Player):
+    # Create a staggered layout with the given parameters.
+    # If the field is a RealWorldField, sets self.numHolesSucceed and self.artefactCount
+    def doStaggeredLayout(self, field:Field, holeSize:float, xHoles:int, borderX:float, dX:float, yHoles:int, borderY:float, dY:float, staggerY:bool) -> tuple[bool, float]:
+        row = 0;
+        holesMade = 0;
+        found = False;
+        self.numHolesSucceed = 0;
+        self.artefactCount = 0;
+        for y in range (yHoles):
+            # a new row. set the starting x and y positions for the first hole
+            pos_x = borderX;
+            pos_y = borderY + dY * y;
+            if (row % 2 != 0):
+                # stagger the even rows
+                pos_x += dX / 2;
+            
+            for x in range (xHoles):
+                # stagger the odd columns if staggerY is True 
+                if staggerY:
+                    if (x % 2 == 0):
+                        pos_y = borderY + dY * y;
+                    else:
+                        pos_y = borderY + (dY / 2) + dY * y;
+                
+                # dig a hole
+                hit = field.digHole(holeSize, pos_x, pos_y);
+                # found records whether or not any hole so far has found treasure
+                found = found or hit;
+                if (hit):
+                    self.numHolesSucceed += 1;
+
+                    if (isinstance(field, RealWorldField)):
+                        self.artefactCount += field.artefactCount;
+                holesMade += 1;
+                pos_x += dX;
+            row += 1;
+        return found, holesMade;
+
+
 # a Player that uses a scrambled 2-D halton distribution of holes
 class HaltonPlayer(Player):
     def __init__(self, field:Field, holeSize:float, numHoles:int, border:bool=False):
@@ -604,7 +645,7 @@ class HaltonPlayer(Player):
 # Numbers of holes in a row and the number of rows are chosen
 # to be close to the desired number of holes while also being close
 # to hexagonal
-class HexagonalLikePlayer(Player):
+class HexagonalLikePlayer(StaggeredPlayer):
     def __init__(self, field:Field, holeSize:float, numHoles:int, LRBorder:bool = True, staggerY:bool = False):
         # these are not private as subclasses may want them
         self.field = field;
@@ -674,40 +715,7 @@ class HexagonalLikePlayer(Player):
         if self.d_x < self.holeSize or self.d_y < self.holeSize:
             self.layoutError = True;
 
-        row = 0;
-        holesMade = 0;
-        found = False;
-        self.numHolesSucceed = 0;
-        self.artefactCount = 0;
-        for y in range (actualNumHoles[1]):
-            # a new row. set the starting x and y positions for the first hole
-            pos_x = border_x;
-            pos_y = border_y + self.d_y * y;
-            if (row % 2 != 0):
-                # stagger the even rows
-                pos_x += self.d_x / 2;
-            
-            for x in range (actualNumHoles[0]):
-                # stagger the odd columns if staggerY is True 
-                if self.staggerY:
-                    if (x % 2 == 0):
-                        pos_y = border_y + self.d_y * y;
-                    else:
-                        pos_y = border_y + (self.d_y / 2) + self.d_y * y;
-                
-                # dig a hole
-                hit = self.field.digHole(self.holeSize, pos_x, pos_y);
-                # found records whether or not any hole so far has found treasure
-                found = found or hit;
-                if (hit):
-                    self.numHolesSucceed += 1;
-
-                    if (isinstance(self.field, RealWorldField)):
-                        self.artefactCount += self.field.artefactCount;
-                holesMade += 1;
-                pos_x += self.d_x;
-            row += 1;
-        return found, holesMade;
+        return self.doStaggeredLayout(self.field, self.holeSize, actualNumHoles[0], border_x, self.d_x, actualNumHoles[1], border_y, self.d_y, self.staggerY);
 
 
 # a Player that adjusts the horizontal and vertical borders used in the
@@ -779,46 +787,13 @@ class HexagonalPlayer(HexagonalLikePlayer):
         elif unexpected:
             print("unexpected case in HexagonalPlayer");
 
-        row = 0;
-        holesMade = 0;
-        found = False;
-        self.numHolesSucceed = 0;
-        self.artefactCount = 0;
-        for y in range (actualNumHoles[1]):
-            # a new row. set the starting x and y positions for the first hole
-            pos_x = border_x;
-            pos_y = border_y + c * y;
-            if (row % 2 != 0):
-                # stagger the rows
-                pos_x += a / 2;
-            
-            for x in range (actualNumHoles[0]):
-                # stagger the odd columns if staggerY is True 
-                if self.staggerY:
-                    if (x % 2 == 0):
-                        pos_y = border_y + c * y;
-                    else:
-                        pos_y = border_y + (c/2) + c * y;
-                
-                # dig a hole
-                hit = self.field.digHole(self.holeSize, pos_x, pos_y);
-                # found records whether or not any hole so far has found treasure
-                found = found or hit;
-                if (hit):
-                    self.numHolesSucceed += 1;
-
-                    if (isinstance(self.field, RealWorldField)):
-                        self.artefactCount += self.field.artefactCount;
-                holesMade += 1;
-                pos_x += a;
-            row += 1;
-        return found, holesMade;
+        return self.doStaggeredLayout(self.field, self.holeSize, actualNumHoles[0], border_x, a, actualNumHoles[1], border_y, c, self.staggerY);
 
 # A Player that places holes in a staggered grid, using the given
 # number of holes in a row (xHoles) and number of rows (yHoles).
 # Horizontal and vertical borders are half the distance between holes and rows
 # respectively. The Player will also stagger the columns if staggerY is True.
-class SpecifiedGridPlayer(Player):
+class SpecifiedGridPlayer(StaggeredPlayer):
     def __init__(self, field:Field, holeSize:float, xHoles:int, yHoles:int, staggerY:bool = False):
         self.__field = field;
         self.__holeSize = holeSize;
@@ -841,37 +816,7 @@ class SpecifiedGridPlayer(Player):
         if (border_x < self.__holeSize/2) or (border_y < self.__holeSize/2):
             self.layoutError = True;
         
-        row = 0;
-        holesMade = 0;
-        found = False;
-        probMiss = 1;
-        self.artefactCount = 0;
-        self.numHolesSucceed = 0;
-
-        for y in range (self.__yHoles):
-            pos_x = border_x;
-            pos_y = border_y + d_y * y;
-            if (row % 2 != 0):
-                pos_x += d_x / 2;
-            for x in range (self.__xHoles):
-                if self.__staggerY:
-                    if (x%2 == 0):
-                        pos_y = d_y/2 + d_y * y;
-                    else:
-                        pos_y = d_y + d_y * y;
-
-                hit = self.__field.digHole(self.__holeSize, pos_x, pos_y);
-                found = found or hit;
-
-                if (hit):
-                    if (isinstance(self.__field, RealWorldField)):
-                        self.artefactCount += self.__field.artefactCount;
-                    self.numHolesSucceed += 1;
-                
-                holesMade += 1;
-                pos_x += d_x;
-            row += 1;
-        return found, holesMade;
+        return self.doStaggeredLayout(self.__field, self.__holeSize, self.__xHoles, border_x, d_x, self.__yHoles, border_y, d_y, self.__staggerY);
 
 # A Player that places holes randomly on the Field.
 # Holes do not overlap.
@@ -1043,6 +988,16 @@ def testHexagonality() -> None:
     field.print(fileName=fieldFileName);
     calculateHoleDistances(field);
 
+def printField(field:Field, realWorldData:bool, treasureShape:str, fieldSize:int, holeSize:float, treasureRadius:float, treasureWidth:float, treasureHeight:float, holesDug:int, playerClass:str):
+    if realWorldData:
+        filename = "realWorldField " + str(fieldSize) + " holesize " + str(holeSize) + " holes " + str(holesDug) + " " + playerClass;
+    elif treasureShape == "circle":
+        filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureRadius) + " holes " + str(holesDug) + " " + playerClass;
+    else:
+        filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureWidth) + "x" + str(treasureHeight) + " holes " + str(holesDug) + " " + playerClass;
+    field.print(filename);
+
+
 # do experiments with specific numbers of holes. Change the values of the variables
 # to fit the experiment. Also change the class of the Player.
 def doSpecificGridExperiment() -> None:
@@ -1131,6 +1086,7 @@ def doSpecificGridExperiment() -> None:
             #player = RandomPlayer(field, holeSize, numParameters[i], True);
             #player = HaltonPlayer(field, holeSize, numParameters[i], True);
             #player = HexagonalLikePlayer(field, holeSize, numParameters[i], True, staggerY);
+            #player = HexagonalPlayer(field, holeSize, numParameters[i], staggerY);
 
             if i == 0 and repeats == 0:
                 # on the first iteration, print the player class name
@@ -1153,15 +1109,8 @@ def doSpecificGridExperiment() -> None:
             # else:
             #     doPrint  = numParameters[i] == 18;
             if repeats == 0 and doPrint:
-                if realWorldData:
-                    filename = "realWorldField " + str(fieldSize) + " holesize " + str(holeSize) + " holes " + str(holesDug) + " " + str(player.__class__.__name__);
-                elif treasureShape == "circle":
-                    filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureRadius) + " holes " + str(holesDug) + " " + str(player.__class__.__name__);
-                else:
-                    filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureWidth) + "x" + str(treasureHeight) + " holes " + str(holesDug) + " " + str(player.__class__.__name__);
+                printField(field, realWorldData, treasureShape, fieldSize, holeSize, treasureRadius, treasureWidth, treasureHeight, holesDug, player.__class__.__name__);
                 
-                field.print(filename);
-
             if result[0]:
                 successes += 1;
                 if (realWorldData):
@@ -1311,14 +1260,7 @@ def exploreNumberOfHoles() -> None:
                 
                 # print field decision: optionally print the field. Change the value that holesDug is compared to as needed
                 if (holesDug == 120) and repeats == 1:
-                    filename = "";
-                    if realWorldData:
-                        filename = "realWorldField " + str(fieldSize) + " holesize " + str(holeSize) + " holes " + str(holesDug) + " " + str(player.__class__.__name__);
-                    elif treasureShape == "circle":
-                        filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureRadius) + " holes " + str(holesDug) + " " + str(player.__class__.__name__);
-                    else:
-                        filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureWidth) + "x" + str(treasureHeight) + " holes " + str(holesDug) + " " + str(player.__class__.__name__);
-                    field.print(filename);
+                    printField(field, realWorldData, treasureShape, fieldSize, holeSize, treasureRadius, treasureWidth, treasureHeight, holesDug, player.__class__.__name__);
                 
                 # check if this layout is new on the first repeat
                 if repeats == 0:
@@ -1341,3 +1283,4 @@ def exploreNumberOfHoles() -> None:
 exploreNumberOfHoles();
 #doSpecificGridExperiment();
 #testHexagonality();
+
