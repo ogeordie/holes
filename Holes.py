@@ -244,10 +244,10 @@ class IntersectField(Field):
         elif centreY + holeSize/2 > self.height:
             self.adjustedHoleAtBorder = True;
             centreY = self.height - holeSize/2;
-        
-        # used in testing
+             
+        #used in testing
         # if (self.adjustedHoleAtBorder):
-        #     pass;
+        #     print("adjusted");
         
         if centreX + holeSize/2 > self.width:
             print("hole out of x bounds");
@@ -564,6 +564,13 @@ class Player:
 class StaggeredPlayer(Player):
     # Create a staggered layout with the given parameters.
     # If the field is a RealWorldField, sets self.numHolesSucceed and self.artefactCount
+    # are set when the function returns.
+    #
+    # xHoles and yHoles are numbers of holes in the x and y directions respectively
+    # borderX and borderY are the left and top borders respectively where no holes are placed
+    # dX and dY are the distances between holes in the x and y directions respectively
+    # staggerY is True if the layout should be staggered in the y direction as well as the x
+    # The borders on the right and bottom of the field are determined by the above parameters
     def doStaggeredLayout(self, field:Field, holeSize:float, xHoles:int, borderX:float, dX:float, yHoles:int, borderY:float, dY:float, staggerY:bool) -> tuple[bool, float]:
         row = 0;
         holesMade = 0;
@@ -607,7 +614,7 @@ class HaltonPlayer(Player):
         self.__field = field;
         self.__holeSize = holeSize;
         self.__numHoles = numHoles;
-        if self.__field.width != self.__field.height:
+        if border and (self.__field.width != self.__field.height):
             print("non square field not supported");
             exit();
         if (border):
@@ -827,6 +834,8 @@ class SpecifiedGridPlayer(StaggeredPlayer):
 # of length and width one tenth of the field, and holes in each bucket
 # stored in a 2-D list
 class RandomPlayer(Player):
+    # if border is True, holes will not be placed on the edges of the field, but
+    # there will be a border of half the expected distance between holes
     def __init__(self, field:Field, holeSize:float, numHoles:int, border:bool = False):
         self.__numHoles = numHoles;
         self.__field = field;
@@ -834,7 +843,7 @@ class RandomPlayer(Player):
         self.__numHorizontalParcels = math.ceil(10);
         self.__numVerticalParcels = math.ceil(10);
         self.__holePositions = [[[] for y in range(self.__numVerticalParcels)] for x in range(self.__numHorizontalParcels)];
-        if self.__field.width != self.__field.height:
+        if border and (self.__field.width != self.__field.height):
             print("non square fields not supported");
             exit();
         if border:
@@ -877,13 +886,13 @@ class RandomPlayer(Player):
                     hTY = h[1] - self.__holeSize/2;
 
                     if newBY > hTY and newTY < hBY and newRX > hLX and newLX < hRX:
-                        check = self.__field.intersectsExistingHole(newHole);
-                        if not(check):
-                            print("**error")
+                        # check = self.__field.intersectsExistingHole(newHole);
+                        # if not(check):
+                        #     print("**error")
                         return True;
-        check = self.__field.intersectsExistingHole(newHole);
-        if check:
-            print("**error")
+        # check = self.__field.intersectsExistingHole(newHole);
+        # if check:
+        #     print("**error")
         return False;
 
     # note: holes don't overlap. If not all holes fit on the field this will never return
@@ -893,8 +902,8 @@ class RandomPlayer(Player):
         self.numHolesSucceed = 0;
         self.artefactCount = 0;
         while h < self.__numHoles:
-            x = random.random() * (self.__field.width - 2*self.__border) + self.__border;
-            y = random.random() * (self.__field.height - 2 * self.__border) + self.__border;
+            x = random.random() * (self.__field.width - 2*self.__border - self.__holeSize) + self.__border + self.__holeSize/2;
+            y = random.random() * (self.__field.height - 2 * self.__border - self.__holeSize) + self.__border + self.__holeSize/2;
             hole = Hole(x, y, self.__holeSize, self.__holeSize);
             if not(self.__intersectsExistingHole(hole)):
                 hit = self.__field.digHole(self.__holeSize, x, y);
@@ -1196,7 +1205,7 @@ def exploreNumberOfHoles() -> None:
         numHolesSucceed = 0;
 
         # run many tests for this number of "holes"
-        for repeats in range(0,numRepeats):
+        for repeats in range(0, numRepeats):
             if realWorldData:
                 field = RealWorldField(fieldSize, fieldSize);
                 # cache the real world data to avoid reading from the file every time.
@@ -1257,9 +1266,8 @@ def exploreNumberOfHoles() -> None:
                     print("ERROR: layout algorithm returned inconsistent number of holes dug");
                     exit();
                 
-                
                 # print field decision: optionally print the field. Change the value that holesDug is compared to as needed
-                if (holesDug == 120) and repeats == 1:
+                if (holesDug == 132) and repeats == 1:
                     printField(field, realWorldData, treasureShape, fieldSize, holeSize, treasureRadius, treasureWidth, treasureHeight, holesDug, player.__class__.__name__);
                 
                 # check if this layout is new on the first repeat
