@@ -68,7 +68,8 @@ if result[0]:
 actualNumberOfHolesDug = result[1]
 ```
 Then after the 10000 runs, print out `numberOfHoles`, `actualHolesDug`, and `successes * 100 / 10000`
-(We assume `actualHolesDug` by the player will be the same when `numberOfHoles` is the same).
+which is the success rate. (We assume `actualHolesDug` by the player will be the same when `numberOfHoles`
+is the same).
 
 This code was only tested with the limited experiments explored in the article. It 
 may not be correct in all circumstances.
@@ -375,6 +376,7 @@ realWorldDataFile = "real world data/Low Density Artefact Coordinates.csv"
 numRepeats = 10000;
 
 # THE FOLLOWING ARE NOT USED FOR DETECTION (REAL WORLD) EXPERIMENTS
+# BUT NEED TO BE DECLARED IN THE FUNCTION
 # if realWorldData is False, set the treasure shape and dimensions
 treasureShape = "circle";
 # if circle - note this is the radius, while the diameter was given in the article:
