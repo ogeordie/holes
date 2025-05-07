@@ -44,6 +44,7 @@ from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, Ellipse, Line, Rectangle, Point
 from kivy.core.window import Window
+from kivy.metrics import Metrics
 
 
 class CreateFieldImage(Widget):
@@ -67,7 +68,7 @@ class CreateFieldImage(Widget):
         # set file name:  change this to refer to the file with field data
         filename = "\
 intersectField 100 holesize 0.5 treasure 3.5 holes 120 HexagonalLikePlayer\
-    "
+"
         self.f = open("" + filename, 'r');
         fieldType = self.f.readline();
         dimensionsLine = self.f.readline();
@@ -77,7 +78,7 @@ intersectField 100 holesize 0.5 treasure 3.5 holes 120 HexagonalLikePlayer\
             biggestSide = int(dimensionsTokens[1]);
         self.displayFactor = 10 / (biggestSide/100);
         self.dimensions = self.convertSize(int(dimensionsTokens[0]), int(dimensionsTokens[1]));
-        Window.size = (self.dimensions[0], self.dimensions[1]);
+        Window.size = (self.dimensions[0]/Metrics.density, self.dimensions[1]/Metrics.density);
         Window.clearcolor = (1, 1, 1);
         Window.top = 50;
         Window.left = 50;

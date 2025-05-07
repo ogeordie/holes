@@ -1,6 +1,6 @@
 # Holes
 
-# Holes is a program for simulations of archaeological digs.
+# Holes is a program for simulations of archaeological excavations.
 
 # Copyright 2024 Geordie Oakes
 
@@ -14,11 +14,17 @@
 # You should have received a copy of the GNU General Public License along with this program. 
 # If not, see https://www.gnu.org/licenses/gpl-3.0.html.
 
+# See the "README.md" file for information, and installation and usage instructions.
 
-# DESCRIPTION
+# See the "size matters layout algorithms.pdf" file for details of the layout
+# algorithms used.
 
-# This code was used to run the simulations described in the article "Size Matters: Optimal 
-# Test Pit Size for Dispersed Archaeological Test Excavations" by Oakes and McLaren.
+
+# BRIEF DESCRIPTION
+
+# This code was used to run the simulations described in the article "Size Matters: 
+# Determining Optimal Test Pit Size for Dispersed Archaeological Test Excavation Programs" by 
+# Georde Oakes and Andrew McLaren, submitted to Australian Archaeology.
 
 # It places square test pits ("holes" in the code) of given number and size on a square field 
 # of a given size. The field has a randomly placed archaeological site ("treasure" in the 
@@ -60,6 +66,7 @@
 
 # The inner simulation procedure (called 10000 times for each number of holes) is simplified 
 # as:
+
 #     field = Field(fieldSize, fieldSize)
 #     field.placeCircularTreasure(treasureRadius)
 #     player = HexagonalLikePlayer(field, holeSize, numberOfHoles)
@@ -67,9 +74,10 @@
 #     if result[0]:
 #         successes = successes + 1
 #     actualNumberOfHolesDug = result[1]
-# Then after the 10000 runs, print out numberOfHoles, actualHolesDug, and successes * 100 / 
-# 10000 (We assume actualHolesDug by the player will be the same when numberOfHoles is the 
-# same).
+
+# Then after the 10000 runs, print out numberOfHoles, actualHolesDug, and successes * 100 / 10000
+# which is the success rate. (We assume actualHolesDug by the player will be the same when
+# numberOfHoles is the same).
 
 # This code was only tested with the limited experiments explored in the article. It may not 
 # be correct in all circumstances.
@@ -244,10 +252,10 @@ class IntersectField(Field):
         elif centreY + holeSize/2 > self.height:
             self.adjustedHoleAtBorder = True;
             centreY = self.height - holeSize/2;
-             
-        #used in testing
-        # if (self.adjustedHoleAtBorder):
-        #     print("adjusted");
+
+        # used in testing
+        #if (self.adjustedHoleAtBorder):
+        #   pass;
         
         if centreX + holeSize/2 > self.width:
             print("hole out of x bounds");
@@ -1153,11 +1161,11 @@ def exploreNumberOfHoles() -> None:
     holeSize = 0.5; # values of 0.5 and 1 are used in the article
     # increment number of holes by this value each iteration
     holeIncrement = 1; # set to 1 for HexagonalLikePlayer etc, and 10 for RandomPlayer etc
-    maxHoles = 5000; # stop when this number of holes is reached
+    maxHoles = 6000; # stop when this number of holes is reached (you can manually stop the program before this if you have enough data)
 
     # set whether we are using real world data and where it can be found
     realWorldData = False;
-    realWorldDataFile = "real world data/Moderate Density Artefact Coordinates.csv"
+    realWorldDataFile = "real world data/Low Density Artefact Coordinates.csv"
 
     # if realWorldData is False, set the treasure shape and dimensions
     treasureShape = "circle"; # can be "rectangle" or "circle"
@@ -1168,6 +1176,9 @@ def exploreNumberOfHoles() -> None:
     treasureHeight = 5;
 
     numRepeats = 10000; #10000 in the article simulations
+
+    #=====================================================================================
+    # These parameters are not changed for experiments reported in the article
 
     # use a left and right border, this was always True for experiments reported in the article
     LRBorder = True;
@@ -1224,6 +1235,7 @@ def exploreNumberOfHoles() -> None:
 
             # player creation: change the player here
             player = HexagonalLikePlayer(field, holeSize, holes, LRBorder, staggerY);
+            #player = NonStaggeredPlayer(field, holeSize, holes);
             #player = HexagonalPlayer(field, holeSize, holes, staggerY);
             #player = HaltonPlayer(field, holeSize, holes, LRBorder);
             #player = NonStaggeredPlayer(field, holeSize, holes);
@@ -1267,7 +1279,8 @@ def exploreNumberOfHoles() -> None:
                     exit();
                 
                 # print field decision: optionally print the field. Change the value that holesDug is compared to as needed
-                if (holesDug == 132) and repeats == 1:
+                # Note that the value refers to actual holes dug, not the value of 'holes'
+                if (holesDug == 120) and repeats == 1:
                     printField(field, realWorldData, treasureShape, fieldSize, holeSize, treasureRadius, treasureWidth, treasureHeight, holesDug, player.__class__.__name__);
                 
                 # check if this layout is new on the first repeat
