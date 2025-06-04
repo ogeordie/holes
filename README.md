@@ -2,7 +2,7 @@
 Holes is a program for simulations of archaeological excavations.
 
 
-Copyright 2024 Geordie Oakes
+Copyright &copy; 2024 Geordie Oakes.
 
 This program is free software: you can redistribute it and/or modify it under the terms of the
 GNU General Public License v3 as published by the Free Software Foundation.
@@ -33,29 +33,30 @@ in the simulations for the article. Other `Player` subclasses include `Hexagonal
 `HaltonPlayer`, and `RandomPlayer`. See the document `size matters layout algorithms.pdf` for 
 explanation of the layout algorithms.
 
-The function `exploreNumberOfHoles()` is the main function for most experiments. This fixes all 
+`ExperimentRunner.runExperiment()` in Holes.py is the entry point to the simulation, and an
+experiment is described by the `Experiment` class. This defines all
 parameters except number of holes (field size, hole size, treasure specification, player 
-type, etc.), and for each number of holes (from 1 to a maximum value) the inner simulation 
+type, etc.). For each number of holes (from 1 to a maximum value, or until 100% success rate
+is reached) the inner simulation 
 procedure is run 10000 times (i.e. there are 10000 digs for each number of holes), with the 
-treasure placed randomly each time. The output (printed to standard output) for each number 
-of holes is the desired number of holes, the actual number of holes as determined by the 
+treasure placed randomly each time. The output of an experiment is, for each number 
+of holes, the desired number of holes, the actual number of holes as determined by the 
 layout algorithm (which may differ from the desired number of holes due to layout algorithm 
-constraints), and the percentage of runs where a hole found treasure ("success rate"). The 
+constraints), and the percentage of runs where a hole found treasure ("success rate"). These
+data are printed to standard output (optionally) and saved to a csv file. The 
 output for the real-world artefact distribution treasure also includes the average number of 
 artefacts found over the runs and average number of holes that found anything.
 
 As mentioned above, note that some players dig a slightly different number of holes than the 
 one supplied to them as the layout algorithm may not work with all numbers of holes. This 
-actual number of holes is also returned by `Player.play()` (as well as weather the dig was
+actual number of holes is also returned by `Player.play()` (as well as whether the dig was
 successful).
 
-The function `doSpecificGridExperiment()` allows experiments to be done with a list of specific 
-numbers of holes, or a list of specific number of holes horizontally and vertically.
-
-The file `Holes.py` contains code to run simulations as described above. There is also the 
-functionality to save a field (with holes and treasure) to a text file.
+The main file is `Experiments.py` which triggers the various experiments and the generation
+of graphs and tables. The file `Holes.py` contains code to run simulations as described above.
+There is also the functionality to save a field (with holes and treasure) to a text file.
 The file `CreateFieldImage.py` contains code to read said text file and produce a graphical 
-representation of the field.
+representation of the field. See the "Files" section below for information on other files.
 
 The inner simulation procedure (called 10000 times for each number of holes) is simplified as:
 ```
@@ -67,7 +68,7 @@ if result[0]:
     successes = successes + 1
 actualNumberOfHolesDug = result[1]
 ```
-Then after the 10000 runs, print out `numberOfHoles`, `actualHolesDug`, and `successes * 100 / 10000`
+Then after the 10000 runs, the output is `numberOfHoles`, `actualHolesDug`, and `successes * 100 / 10000`
 which is the success rate. (We assume `actualHolesDug` by the player will be the same when `numberOfHoles`
 is the same).
 
@@ -105,13 +106,12 @@ macOS, and Windows. We trust that these instructions can be adapted to the setup
     `C:\programming\holes` (for Windows) and open that folder in VS Code. Avoid spaces in the
     folder path.
 
-3.  Place the files `Holes.py`, `CreateFieldImage.py`, and `requirements.txt` in that folder
-    (and the other files and folders from the repository).
+3.  Place the python files and and the other files and folders from the repository in that folder.
     If using GitHub, you can use it to manage your code if you
     like, including VS Code GitHub integration (but we have not tested this). We have included
     the `.venv` folder in the `.gitignore` file - see step 4. Otherwise you can simply download the
     files in the repository as a zip file from GitHub or Zenodo, unzip them, and copy them
-    to your directory (be sure the files are in the folder you opened with VS Code).
+    to your directory (be sure the files and folders are in the folder you opened with VS Code).
 
 4.  Continue with steps in the tutorial to create a virtual Venv environment using the
     VS Code `Python: Create Environment` command (with the folder open in VS Code).
@@ -119,8 +119,9 @@ macOS, and Windows. We trust that these instructions can be adapted to the setup
     be 3.12.x. This virtual environment will avoid installed packages from conflicting with other
     projects.
 
-5.  With the folder open, install dependencies in the VS Code terminal (access it from the View menu)
-    by running:
+5.  With the folder open, create a `New Terminal` from the `Terminal` menu (**NOTE: it is important that
+    a new terminal is created after creating the virtual python environment**). Then install
+    dependencies in the VS Code terminal by running:
     ```
     python3.12 -m pip install -r requirements.txt
     ```
@@ -129,7 +130,7 @@ macOS, and Windows. We trust that these instructions can be adapted to the setup
     python -m pip install -r requirements.txt
     ```
 
-6.  Run the code! With `Holes.py` open in the editor (click it in the Explorer bar on the left
+6.  Run the code! With `Experiments.py` open in the editor (click it in the Explorer bar on the left
     of the VS Code window) press F5 to debug or Ctrl-F5 to run (or select the option
     from the Run menu). If you are asked to choose debugger choose "Python Debugger".
     If you are asked for a "Debug Configuration" choose "Python File". It is more efficient
@@ -154,8 +155,7 @@ macOS, and Windows. We trust that these instructions can be adapted to the setup
 
 2.  Create a directory (e.g. `~/programming/holes` on Linux and macOS or `C:\programming\holes` on Windows),
     place the files from the repository in it, and `cd` to it. Make sure the directory you are in contains the
-    python files `Holes.py`, `CreateFieldImage.py`, `requirements.txt` and the other files and folders
-    from the repository.
+    python files and all the other files and folders from the repository.
 
 3.  Create a python virtual environment
     - On bash using macOS Terminal or Linux (run `bash` if it is not the default shell):
@@ -175,7 +175,7 @@ macOS, and Windows. We trust that these instructions can be adapted to the setup
 
 4.  Run the code:
     ```
-    python Holes.py
+    python Experiments.py
     ```
     and when you have printed a field from `Holes.py` and edited `CreateFieldImage.py`
     to reflect the file name of the field file:
@@ -187,7 +187,8 @@ macOS, and Windows. We trust that these instructions can be adapted to the setup
 ```
 deactivate
 ```
-Be sure to `activate` it again before running the program again.
+Be sure to `activate` it again before running the program again. You need to `activate` it
+each time your shell or command prompt is started.
 
 ## DEPENDENCIES
 Dependencies are listed in the `requirements.txt` file for easy installation.
@@ -196,7 +197,13 @@ The Kivy framework (version 2.3.0) is used in `CreateImageField.py` to graphical
 for debugging purposes.
 
 The sciPy library (version 1.14.1) is used in `Holes.py` to generate Halton distributions (not used
-in the simulations for the paper). The sciPy installation installs the numPy library as a dependency as well.
+in the simulations for the paper).
+
+The numPy library (version 2.1.0) is used in `Tables.py` and `Plotter.py`.
+
+The matplotlib library (version 3.10.3) is used in `Plotter.py` to produce graphs and tables.
+
+The rich library (version 14.0.0) is used in `Holes.py` to generate progress bars
 
 The versions given are those used during development. Newer versions
 will probably work but use the stated versions if you run into issues.
@@ -207,25 +214,28 @@ from the `requirements.txt` file if there is an error during installation.
 ## FILES
 
 These are the files in the `holes` distribution:
--   `Holes.py`: The code to run the simulations reported in the paper
+-   `Experiments.py` is the main file for running simulations and reproduces
+    the experiments and produces graphs and tables used in the paper.
+-   `Holes.py`: The code to run the simulations.
 -   `CreateFieldImage.py`: Code to produce a graphical representation of a `Field`
-    printed from `Holes.py`, used for debugging
+    printed from `Holes.py`, used for debugging.
+-   `Plotter.py` plots graphs and tables using the matplotlib library.
+-   `Tables.py` provides functions to analyze the data used in the tables.
 -   `requirements.txt`: the dependencies of the above python files, used during
-    installation
--   `README.md`: this file, describing the software and how to install and use it
+    installation.
+-   `README.md`: this file, describing the software and how to install and use it.
 -   `size matters layout algorithms.pdf`: Description of the layout algorithms
     implemented in `Holes.py`. The `Hexagonal-Like` algorithm is the one used
-    in the experiments reported in the paper
+    in the experiments reported in the paper.
 -   `real world data` folder: contains the data used in the detection experiments
-    reported in the paper
--   `calculate break even ratio.xlsm`: an Excel spreadsheet with a macro to
-    calculate the break-even ratios for each success rate. This example contains
-    data for a treasure radius of 3.5 (7m diameter) but you can replace these
-    with any data you wish (the macro expects the data to be in the same
-    place as it is in the example). Run the macro after pasting the new data.
+    reported in the paper.
 -   `intersectField 100 holesize 0.5 treasure 3.5 holes 120 HexagonalLikePlayer`:
-    an example print out of a field produced by `Holes.py` and which can be
-    displayed with `CreateFieldImage.py`
+    an example print out of a field produced by `Holes.py` which can be
+    displayed with `CreateFieldImage.py`.
+-   `data` folder: contains the data generated by `Experiments.py`. To regenerate
+    the data set `generate` to `True` in `Experiments.py`. It may take many hours.
+-   `graphs` folder: contains the graphs and tables generated by `Experiments.py`.
+    Run `Experiments.py` to regenerate these.
 
 
 ## EXPERIMENTS
@@ -234,109 +244,102 @@ The experiments reported in the paper fall into two broad categories: Intersecti
 experiments (using circular or rectangular treasure sites) and Detection experiments
 (using artefact location data from real world excavations).
 
-In all experiments, the program is run once for 0.25 square metre holes (0.5m x 0.5m) and again
-for 1 square metre holes (1m x 1m).
+For each tested set of values, an experiment is run for 0.25 square metre holes (0.5m x 0.5m) and
+another experiment for 1 square metre holes (1m x 1m).
 
 In all experiments the `Player` used is the `HexagonalLikePlayer`.
 
-The experiments are set up in the `exploreNumberOfHoles()` function in `Holes.py`. Following
-are the settings for the experiments reported in the paper.
+The experiments are set up in `Experiments.py` and passed to the `ExperimentRunner` in
+`Holes.py`. Below are the settings for the experiments reported in the paper.
 
-An experiment can be manually interruped once you have enough data (Cntrl-C in the terminal
-or "stop debugging" in VS Code) instead of waiting until the maximum number of holes is reached.
+An experiment concludes when the maximum number of holes is reached, or a success rate
+of 100 is reached. In these experiments maxHoles is set to 10000, which results in
+experiments running until 100% success rate is reached.
+
+Data produced using `Experiments.py` are output to the `data` directory.
+Figures and Tables are output to the `graphs` directory. By default `Experiments.py`
+uses pre-generated data from the `data` directory. If you wish to generate your own data
+set `generate` to `True` in `Experiments.py`. It may take many hours.
 
 
 ### Intersection Experiments
 
-The values printed to standard output for the Intersection Experiments are:
-`<desired number of holes> <actual number of holes dug> <success rate after 10000 digs>`
+The values printed to standard output (optionally) and saved to a csv file for the Intersection
+Experiments are: `<desired number of holes> <actual number of holes dug> <success rate after 10000 digs>`
 For example a line `110 120 57.59` means the simulation requested that 110 holes are dug,
 the layout algorithm settled on 120 holes (to keep things close to hexagonal), and
 the treasure was intersected by at least one hole in 57.59% of the 10000 digs.
 
-The figures were produced in Excel by plotting the `<actual number of holes dug>` values
-(the second column) on
-the x axis and `<success rate after 10000 digs>` on the y axis (see below for
-how to plot the small hole strategy at different effort ratios in Figures 5, 6, and 7).
-When pasting text data into Excel, use the "text import wizard" to format the data into columns.
-You can also use "text to columns" from the Data tab once the data has been pasted and selected.
-Ensure "Space" is ticked in the "delimiters" list.
+Figures are produced by calling `plotExperiment()` in the file `Plotter.py`, which plots
+the `<actual number of holes dug>` values (the second column) on
+the x axis and `<success rate after 10000 digs>` on the y axis, for small holes and big holes.
+This optionally also plots the small hole strategy at different effort ratios (2:1, 3:1, and 4:1).
 
 #### Figure 4A: Site (7m diameter circle), Field (100m x 100m), Layout (Hexagonal)
-The values for the variables in `exploreNumberOfHoles()` are:
+This graph is output to the file `7mCircle 100mField.png` in the graphs directory.
+The parameters for these experiments are:
 ```
-fieldSize = 100;
-
-# hole size for 0.25 square metre holes (0.5m x 0.5m)
-# NOTE: change this to 1 for 1 square metre holes (1m x 1m)
-holeSize = 0.5;
-
-# increment number of holes by this value each iteration
-holeIncrement = 1;
-maxHoles = 6000; # stop when this number of holes is reached
-# (you can manually stop the program before this if you have enough data)
-
-# set whether we are using real world data and where it can be found
-realWorldData = False;
-realWorldDataFile = "<not used>"
-
-# if realWorldData is False, set the treasure shape and dimensions
-treasureShape = "circle";
-# if circle - note this is the radius, while the diameter was given in the article:
-treasureRadius = 3.5; # for 7m diameter
-# if rectangle:
-treasureWidth = 20;
-treasureHeight = 5;
-
-numRepeats = 10000;
+fieldSize = 100
+holeSize = 0.5 (for first experiment) and 1 (for second experiment)
+holeIncrement = 1
+realWorldData = False
+treasureShape = "circle"
+treasureRadius = 3.5
+numRepeats = 10000
 ```
-
-Note that the program is run once for `holeSize = 0.5` and again changing the value
-to `holeSize = 1`.
-
 #### Figure 4B: Site (7m diameter circle), Field (200m x 200m), Layout (Hexagonal)
+This graph is output to the file `7mCircle 200mField.png` in the graphs directory.
 The values are as for Figure 4A, except:
 ```
-fieldSize = 200;
+fieldSize = 200
 ```
 
 #### Figure 4C: Site (28m diameter circle), Field (100m x 100m), Layout (Hexagonal)
+This graph is output to the file `28mCircle 100mField.png` in the graphs directory.
 The values are as for Figure 4A (note that `fieldSize` is again 100), except:
 ```
-treasureRadius = 14;
+treasureRadius = 14
 ```
 
 #### Figure 4D: Site (1m diameter circle), Field (100m x 100m), Layout (Hexagonal)
+This graph is output to the file `1mCircle 100mField.png` in the graphs directory.
 The values are as for Figure 4A, except:
 ```
-treasureRadius = 0.5;
+treasureRadius = 0.5
 ```
 
 #### Figure 4E: Site (20m x 5m elongated), Field (100m x 100m), Layout (Hexagonal)
+This graph is output to the file `20x5mRectangle 100mField.png` in the graphs directory.
 The values are as for Figure 4A, except:
 ```
-treasureShape = "rectangle";
-treasureWidth = 20;
-treasureHeight = 5;
+treasureShape = "rectangle"
+treasureWidth = 20
+treasureHeight = 5
 ```
 
 #### Figures 5, 6, and 7: Intersection effort ratio success rates
+These graphs, showing the small hole strategy at various effort ratios are output to:
+- `1mCircle 100mField ratios.png`
+- `7mCircle 100mField ratios.png`
+- `28mCircle 100mField ratios.png`.
+
 The data for the 1:1 ratio lines (for the small holes and the big holes) is as for the
 Figure 4 experiments (4D, 4A, and 4C respectively).
-Data for the small hole strategy at other ratios are generated in Excel
-by dividing the x value (`<actual holes dug>`) by the ratio value (2, 3, and 4)
-and plotting this against small hole success rate on the y axis.
+Data for the small hole strategy at other ratios are generated by dividing the x value
+(`<actual holes dug>`) by the ratio value (2, 3, and 4) and plotting this against
+small hole success rate on the y axis.
 
 #### Table 1
-Table 1 uses the same data as the figures, analysed in Excel.
+This is output to `intersectDifferenceInSuccess.png`.
+Table 1 uses the same data as the figures, analysed using `Tables.py`.
 
 #### Table 2
-Table 2 uses the same data once again, with an Excel macro to generate the
-data on break-even ratios. (see the `calculate break even ratio.xlsm` file).
-The macro must be run after pasting new data into the spreadsheet.
+This is output to `intersectBreakEvenRatios.png`.
+Table 2 uses the same data once again, analyzed using `Tables.py`
+
 
 ### Detection Experiments
-The values printed to one line of standard output for the Detection Experiments are:
+The values printed to one line of standard output (optionally) are:
 ```
 <desired number of holes> <actual number of holes dug> <success rate after 10000 digs>
 <average number of artefacts found over 10000 digs>
@@ -346,58 +349,42 @@ For example `110 120 98.87 10.7975 1.5141` means the simulation requested that 1
 are dug, the layout algorithm settled on 120 holes (to keep things close to hexagonal),
 an artefact was detected by a hole in 98.87% of the 10000 digs, on average 10.7975
 artefacts were detected by holes over the 10000 digs, and on average 1.5141 holes
-detected an artefact over the 10000 digs.
+detected an artefact over the 10000 digs. The first three values are also saved in a
+csv file in the `data` directory.
 
 Again note that two experiments are run, one for 0.25 square metre holes (0.5m x 0.5m) and again
 for 1 square metre holes (1m x 1m), setting `holeSize` to 0.5 and 1 respectively.
 
 #### Figures 8, 10, and 12
-These figures show the success rates of small holes and big holes for real world
-artefact distributions of different densities.
+These graphs are ouptut to:
+- `LowDensity 100mField.png`
+- `ModerateDensity 100mField.png`
+- `HighDensity 100mField.png`.
 
-The values for the variables in `exploreNumberOfHoles()` are:
+These graphs show the success rates of small holes and big holes for real world
+artefact distributions of different densities (Low, Moderate, and High respectively)
+
+The parameters for these experiments are:
 ```
-fieldSize = 100;
-
-# hole size for 0.25 square metre holes (0.5m x 0.5m)
-# NOTE: change this to 1 for 1 square metre holes (1m x 1m)
-holeSize = 0.5;
-
-# increment number of holes by this value each iteration
-holeIncrement = 1;
-maxHoles = 6000; # stop when this number of holes is reached
-# (you can manually stop the program before this if you have enough data)
-
-# set whether we are using real world data and where it can be found
-realWorldData = True;
-# NOTE: change this to use Moderate and High Density data
-realWorldDataFile = "real world data/Low Density Artefact Coordinates.csv"
-
-numRepeats = 10000;
-
-# THE FOLLOWING ARE NOT USED FOR DETECTION (REAL WORLD) EXPERIMENTS
-# BUT NEED TO BE DECLARED IN THE FUNCTION
-# if realWorldData is False, set the treasure shape and dimensions
-treasureShape = "circle";
-# if circle - note this is the radius, while the diameter was given in the article:
-treasureRadius = 3.5; # for 7m diameter
-# if rectangle:
-treasureWidth = 20;
-treasureHeight = 5;
+fieldSize = 100
+holeSize = 0.5 (for first experiment) and 1 (for second experiment)
+holeIncrement = 1
+realWorldData = True
+realWorldDataFileName =
+    - "real world data/Low Density Artefact Coordinates.csv",
+    - "real world data/Moderate Density Artefact Coordinates.csv",
+    - "real world data/High Density Artefact Coordinates.csv (respectively)
+numRepeats = 10000
 ```
-
-Note that Figure 10 uses the `Moderate Density Artefact Coordinates.csv` and
-Figure 12 the `High Density Artefact Coordinates.csv`, changing the `realWorldDataFile`
-variable accordingly.
 
 #### Figures 9, 11, and 13: effort ratio comparison
-This uses the same data as for Figure 8, 10, and 12 respectively,
+These graphs are output to:
+- `LowDensity 100mField ratios.png`
+- `ModerateDensity 100mField ratios.png`
+- `HighDensity 100mField ratios.png`.
+
+These use the same data as for Figure 8, 10, and 12 respectively,
 and additionally plots the success of the small hole strategy at different effort ratios.
-Data for the small hole strategy at other ratios are generated in Excel
-by dividing the x value (`<actual holes dug>`) by the ratio value (2, 3, and 4)
-and plotting this against small hole success rate on the y axis.
 
 #### Tables 3, 4, and 5
-These use the same data as Figures 9, 11, and 13 respectively, with an Excel
-macro to generate the data on break-even ratios (see the `calculate break even ratio.xlsm` file).
-The macro must be run after pasting new data into the spreadsheet.
+These use the same data as Figures 9, 11, and 13 respectively, analyed using `Tables.py`.

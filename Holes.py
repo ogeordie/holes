@@ -4,83 +4,76 @@
 
 # Copyright 2024 Geordie Oakes
 
-# This program is free software: you can redistribute it and/or modify it under the terms of 
-# the GNU General Public License v3 as published by the Free Software Foundation.
+# This program is free software: you can redistribute it and/or modify it under the terms of the GNU 
+# General Public License v3 as published by the Free Software Foundation.
 
-# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; 
-# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. 
-# See the GNU General Public License v3 for more details.
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without 
+# even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+# General Public License v3 for more details.
 
-# You should have received a copy of the GNU General Public License along with this program. 
-# If not, see https://www.gnu.org/licenses/gpl-3.0.html.
-
-# See the "README.md" file for information, and installation and usage instructions.
-
-# See the "size matters layout algorithms.pdf" file for details of the layout
-# algorithms used.
+# You should have received a copy of the GNU General Public License along with this program. If not, 
+# see https://www.gnu.org/licenses/gpl-3.0.html.
 
 
-# BRIEF DESCRIPTION
+# DESCRIPTION
 
-# This code was used to run the simulations described in the article "Size Matters: 
-# Determining Optimal Test Pit Size for Dispersed Archaeological Test Excavation Programs" by 
-# Georde Oakes and Andrew McLaren, submitted to Australian Archaeology.
+# This code was used to run the simulations described in the article "Size Matters: Determining 
+# Optimal Test Pit Size for Dispersed Archaeological Test Excavation Programs" by Geordie Oakes and 
+# Andrew McLaren, submitted to Australian Archaeology.
 
-# It places square test pits ("holes" in the code) of given number and size on a square field 
-# of a given size. The field has a randomly placed archaeological site ("treasure" in the 
-# code), either specified by a circle or rectangle (for intersection experiments), or by 
-# real-world data on artefact distribution from digs in NSW Australia (for detection 
-# experiments). See the csv files in the real world data directory for these data.
+# It places square test pits ("holes" in the code) of given number and size on a square field of a 
+# given size. The field has a randomly placed archaeological site ("treasure" in the code), either 
+# specified by a circle or rectangle (for intersection experiments), or by real-world data on artefact 
+# distribution from digs in NSW Australia (for detection experiments). See the csv files in the real 
+# world data directory for these data.
 
-# The pits are placed according to a layout algorithm. Layout algorithms are implemented by 
-# subclasses of the class Player. Calling Player.play() performs one archaeological dig 
-# (digging a certain number of holes on the Field according to the layout algorithm), and 
-# returns True if treasure is found (False otherwise). The HexagonalLikePlayer player was used 
-# in the simulations for the article. Other Player subclasses include HexagonalPlayer, 
-# HaltonPlayer, and RandomPlayer. See the document size matters layout algorithms.pdf for 
-# explanation of the layout algorithms.
+# The pits are placed according to a layout algorithm. Layout algorithms are implemented by subclasses 
+# of the class Player. Calling Player.play() performs one archaeological dig (digging a certain number 
+# of holes on the Field according to the layout algorithm), and returns True if treasure is found 
+# (False otherwise). The HexagonalLikePlayer player was used in the simulations for the article. Other 
+# Player subclasses include HexagonalPlayer, HaltonPlayer, and RandomPlayer. See the document size 
+# matters layout algorithms.pdf for explanation of the layout algorithms.
 
-# The function exploreNumberOfHoles() is the main function for most experiments. This fixes 
-# all parameters except number of holes (field size, hole size, treasure specification, player 
-# type, etc.), and for each number of holes (from 1 to a maximum value) the inner simulation 
-# procedure is run 10000 times (i.e. there are 10000 digs for each number of holes), with the 
-# treasure placed randomly each time. The output (printed to standard output) for each number 
-# of holes is the desired number of holes, the actual number of holes as determined by the 
-# layout algorithm (which may differ from the desired number of holes due to layout algorithm 
-# constraints), and the percentage of runs where a hole found treasure ("success rate"). The 
-# output for the real-world artefact distribution treasure also includes the average number of 
+# ExperimentRunner.runExperiment() in Holes.py is the entry point to the simulation, and an experiment 
+# is described by the Experiment class. This defines all parameters except number of holes (field 
+# size, hole size, treasure specification, player type, etc.). For each number of holes (from 1 to a 
+# maximum value, or until 100% success rate is reached) the inner simulation procedure is run 10000 
+# times (i.e. there are 10000 digs for each number of holes), with the treasure placed randomly each 
+# time. The output of an experiment is, for each number of holes, the desired number of holes,
+# the actual number of holes as determined by the  layout algorithm (which may differ from the desired
+# number of holes due to layout algorithm constraints), and the percentage of runs where a hole found
+# treasure ("success rate"). These data are printed to standard output and saved to a csv file. The
+# output for the real-world artefact distribution treasure also includes the average number of
 # artefacts found over the runs and average number of holes that found anything.
 
-# As mentioned above, note that some players dig a slightly different number of holes than the 
-# one supplied to them as the layout algorithm may not work with all numbers of holes. This 
-# actual number of holes is also returned by Player.play() (as well as weather the dig was 
-# successful).
+# As mentioned above, note that some players dig a slightly different number of holes than the one 
+# supplied to them as the layout algorithm may not work with all numbers of holes. This actual number 
+# of holes is also returned by Player.play() (as well as whether the dig was successful).
 
-# The function doSpecificGridExperiment() allows experiments to be done with a list of 
-# specific numbers of holes, or a list of specific number of holes horizontally and vertically.
+# The main file is Experiments.py which triggers the various experiments and the generation of
+# graphs and tables. This file Holes.py contains code to run simulations as described above. There
+# is also the functionality to save a field (with holes and treasure) to a text file. The file
+# CreateFieldImage.py contains code to read said text file and produce a graphical representation
+# of the field. 
 
-# This file Holes.py contains code to run simulations as described above. There is also the 
-# functionality to save a field (with holes and treasure) to a text file. The file 
-# CreateFieldImage.py contains code to read said text file and produce a graphical 
-# representation of the field.
-
-# The inner simulation procedure (called 10000 times for each number of holes) is simplified 
-# as:
-
-#     field = Field(fieldSize, fieldSize)
-#     field.placeCircularTreasure(treasureRadius)
-#     player = HexagonalLikePlayer(field, holeSize, numberOfHoles)
-#     result = player.play()
-#     if result[0]:
-#         successes = successes + 1
-#     actualNumberOfHolesDug = result[1]
-
-# Then after the 10000 runs, print out numberOfHoles, actualHolesDug, and successes * 100 / 10000
-# which is the success rate. (We assume actualHolesDug by the player will be the same when
+# The inner simulation procedure (called 10000 times for each number of holes) is simplified as:
+#
+# 	field = Field(fieldSize, fieldSize)
+# 	field.placeCircularTreasure(treasureRadius)
+# 	player = HexagonalLikePlayer(field, holeSize, numberOfHoles)
+# 	result = player.play()
+# 	if result[0]:
+# 		successes = successes + 1
+# 	actualNumberOfHolesDug = result[1]
+#
+# Then after the 10000 runs, the output is numberOfHoles, actualHolesDug, and successes * 100 / 10000 
+# which is the success rate. (We assume actualHolesDug by the player will be the same when 
 # numberOfHoles is the same).
 
-# This code was only tested with the limited experiments explored in the article. It may not 
-# be correct in all circumstances.
+# This code was only tested with the limited experiments explored in the article. It may not be 
+# correct in all circumstances.
+
+# See the README.md file for more details.
 
 import random
 import math
@@ -89,6 +82,8 @@ import traceback
 import time
 import csv
 from scipy.stats import qmc
+from pathlib import Path
+from rich.progress import Progress, SpinnerColumn, TaskProgressColumn, TimeRemainingColumn, BarColumn
 
 # a hole on a field
 class Hole:
@@ -102,8 +97,8 @@ class Hole:
 # for allowing treasure to be placed on the field too.
 # To use, first place the treasure, then call digHole() for each hole in the
 # layout algorithm, which returns True if the hole finds treasure.
-# A Field is intended to be used once only: placing a 
-# second treasure does not remove the first one.
+# A Field is intended to be used once only: placing a  second treasure does not
+# remove the first one.
 #
 # NOTE: Some parts of this code assume a square field.
 class Field:
@@ -290,7 +285,7 @@ class IntersectField(Field):
 # the next is the x coordinate of the artefact, the third is the y coordinate of the artefact.
 #
 # As the number of artefacts can be large, they are stored as a grid of data parcels
-# in self.__artefacts. self.__artefacts[i][j] contains a list of artefacts. An
+# in self.__artefacts. self.__artefacts[i][j] contains a DataParcel of artefacts. An
 # artefact at location a,b (floats) is stored in self.__artefacts[floor(a)][floor(b)]
 # and so can be located easily.
 #
@@ -535,7 +530,9 @@ class RealWorldField(Field):
     # first line is the string "realworld", second line is field dimensions,
     # third line is the string "realworldtreasure"
     # fourth line is treasure dimensions (bounding box).
-    # the following lines are the hole locations and dimensions and whether it uncovers treasure, one line per hole
+    # then a line for each artefact.
+    # finally a line for each hole locations and dimensions and whether it uncovers treasure
+    # see CreateFieldImage.py for more details of the file format.
     def print(self, fileName = ""):
         if fileName != "":
             output = open(fileName, 'w');
@@ -840,7 +837,9 @@ class SpecifiedGridPlayer(StaggeredPlayer):
 #
 # For efficiency considerations the field is divided into buckets
 # of length and width one tenth of the field, and holes in each bucket
-# stored in a 2-D list
+# stored in a 2-D list.
+#
+# Assumes a square Field.
 class RandomPlayer(Player):
     # if border is True, holes will not be placed on the edges of the field, but
     # there will be a border of half the expected distance between holes
@@ -929,7 +928,7 @@ class RandomPlayer(Player):
                 h += 1;
         return found, h;
 
-# A Player that places holes in a plain grid
+# A Player that places holes in a plain square grid
 class NonStaggeredPlayer(Player):
     def __init__(self, field:Field, holeSize:float, numHoles:int):
         self.__numHoles = numHoles;
@@ -1005,18 +1004,28 @@ def testHexagonality() -> None:
     field.print(fileName=fieldFileName);
     calculateHoleDistances(field);
 
-def printField(field:Field, realWorldData:bool, treasureShape:str, fieldSize:int, holeSize:float, treasureRadius:float, treasureWidth:float, treasureHeight:float, holesDug:int, playerClass:str):
+# prints the given Field to a file. This file can be read by CreateFieldImage.py to
+# create a graphical depiction of the field.
+def printField(field:Field, realWorldData:bool, treasureShape:str, fieldSize:int, holeSize:float, treasureRadius:float, treasureWidth:float, treasureHeight:float, holesDug:int, playerClass:str, staggerY: bool):
+    # create the file name
+    staggerString = ""
+    if (staggerY):
+        staggerString = "staggerY ";
+
     if realWorldData:
-        filename = "realWorldField " + str(fieldSize) + " holesize " + str(holeSize) + " holes " + str(holesDug) + " " + playerClass;
+        filename = "realWorldField " + str(fieldSize) + " holesize " + str(holeSize) + " holes " + str(holesDug) + " " + staggerString + playerClass;
     elif treasureShape == "circle":
-        filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureRadius) + " holes " + str(holesDug) + " " + playerClass;
+        filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureRadius) + " holes " + str(holesDug) + " " + staggerString + playerClass;
     else:
-        filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureWidth) + "x" + str(treasureHeight) + " holes " + str(holesDug) + " " + playerClass;
+        filename = "intersectField " + str(fieldSize) + " holesize " + str(holeSize) + " treasure " + str(treasureWidth) + "x" + str(treasureHeight) + " holes " + str(holesDug) + " " + staggerString + playerClass;
+
+    # print the field   
     field.print(filename);
 
 
 # do experiments with specific numbers of holes. Change the values of the variables
 # to fit the experiment. Also change the class of the Player.
+# This was not used in the experiments reported in the paper.
 def doSpecificGridExperiment() -> None:
 
     #==================================================================================
@@ -1144,164 +1153,279 @@ def doSpecificGridExperiment() -> None:
         else:
             print(holesDug, successes * 100 / numRepeats);
 
-
-# Do experiments over range of hole numbers.
-# Change the values of the variables to specify the experiment, and change the
-# class of the Player created.
-def exploreNumberOfHoles() -> None:
-    #=====================================================================================
-    # Change these variable values to specify an experiment.
-    # Also change the subclass of Player that is created later in the function
-    # (search "player creation").
-    # To print out the field at a certain point during the simulation
-    # (when a certain number of holes are dug) change the value to which holesDug is
-    # compared still later in the function (search "print field decision").
-
-    fieldSize = 100; # values of 100 and 200 were used in the article
-    holeSize = 0.5; # values of 0.5 and 1 are used in the article
-    # increment number of holes by this value each iteration
-    holeIncrement = 1; # set to 1 for HexagonalLikePlayer etc, and 10 for RandomPlayer etc
-    maxHoles = 6000; # stop when this number of holes is reached (you can manually stop the program before this if you have enough data)
-
-    # set whether we are using real world data and where it can be found
-    realWorldData = False;
-    realWorldDataFile = "real world data/Low Density Artefact Coordinates.csv"
-
-    # if realWorldData is False, set the treasure shape and dimensions
-    treasureShape = "circle"; # can be "rectangle" or "circle"
-    # if circle - note this is the radius, while the diameter was given in the article:
-    treasureRadius = 3.5;
-    # if rectangle:
-    treasureWidth = 20;
-    treasureHeight = 5;
-
-    numRepeats = 10000; #10000 in the article simulations
-
-    #=====================================================================================
-    # These parameters are not changed for experiments reported in the article
-
-    # use a left and right border, this was always True for experiments reported in the article
-    LRBorder = True;
-    # stagger in the Y direction as well as the X. Some Players are already staggered in the X direction
-    # Note that for experiments reported in the article staggerY was always False.
-    staggerY = False;
-    #=====================================================================================
-
-    if realWorldData:
-        print("realworld, field:", fieldSize, "hole size:", holeSize, "stagger Y:", staggerY);
-    elif treasureShape == "circle":
-        print("circle, field:", fieldSize, "hole size:", holeSize, "treasure radius:", treasureRadius, "stagger Y:", staggerY);
-    else:
-        print("rectangle, field:", fieldSize, "hole size:", holeSize, "treasure dimensions:", str(treasureWidth) + "x" + str(treasureHeight), "stagger Y:", staggerY);
+# A class that describes an experiment to be run in the ExperimentRunner.
+class Experiment:
+    # the height and width of the square field.
+    # Values of 100m and 200m were used in the article
+    def getFieldSize(self) -> int:
+        pass;
     
-    # This is the value of the actual number of holes dug for the previous value of "holes".
-    # As this is before any value of "holes" we set to -1
-    lastHole = -1;
+    # the length and width of the square holes to be dug.
+    # Values of 0.5m and 1m were used in the article
+    def  getHoleSize(self) -> float:
+        pass;
+    
+    # the number by which the number of holes is incremented each time.
+    # 1 was used in the article, but can be set to 10 for other Players
+    # (e.g. RandomPlayer)
+    def getHoleIncrement(self) -> int:
+        pass;
+    
+    # the number of holes at which to stop the simulation, unless
+    # 100% success rate is acheived beforehand (in which case the
+    # simulation stops)
+    def getMaxHoles(self) -> int:
+        pass;
 
-    # this is where we cache the real world data to avoid having to read the data file on each iteration
-    realWorldDataCache = None;
+    # whether the experiment uses real world data (True)
+    # or a circular or rectangular treasure (False)
+    def getRealWorldData(self) -> bool:
+        pass;
 
-    # iterate over number of holes. "holes" is the desired number of holes passed to the
-    # Player. The actual number the Player digs may vary according to its layout algorithm
-    for holes in range(1, maxHoles+1, holeIncrement):
-        successes = 0;
-        holesDug = -1;
+    # if getRealWorldData() returns True, this is the name of the
+    # csv file that specifies the data. For example
+    # "real world data/Low Density Artefact Coordinates.csv"
+    def getRealWorldDataFile(self) -> str:
+        pass;
 
-        # Keep track of whether this layout is new: some Players such as HexagonalLikePlayer
-        # will use the same actual number of holes (and layout) for several consecutive desired number of holes.
-        # If we find that the layout is not new we skip the repeats for that value of "holes".
-        new = True;
+    # if getRealWorldData() returns False, this is the shape of the treasure.
+    # Can be "circle" or "rectangle"
+    def getTreasureShape(self) -> str:
+        pass;
 
-        artefactCount = 0;
-        numHolesSucceed = 0;
+    # if getTreasureShape() returns "circle", this is the radius of the treasure.
+    # Note that in the paper diameters are cited rather than radius.
+    def getTreasureRadius(self) -> float:
+        pass;
 
-        # run many tests for this number of "holes"
-        for repeats in range(0, numRepeats):
-            if realWorldData:
-                field = RealWorldField(fieldSize, fieldSize);
-                # cache the real world data to avoid reading from the file every time.
-                # The data doesn't change throughout this function.
-                if realWorldDataCache == None:
-                    field.placeRealWorldTreasure(csvFileName=realWorldDataFile);
-                    realWorldDataCache = field.getData();
+    # if getTreasureShape() returns "rectangle", this is the width of the treasure
+    def getTreasureWidth(self) -> float:
+        pass;
+
+    # if getTreasureShape() returns "rectangle", this is the height of the treasure
+    def getTreasureHeight(self) -> float:
+        pass;
+
+    # the number of simulation iterations for each number of holes
+    def getNumRepeats(self) -> int:
+        pass;
+
+    # whether or not the layout algorithm should enforce left and right borders
+    # on the field in which no holes are dug (always True in the experiments
+    # reported in the paper)
+    def getLRBorder(self) -> bool:
+        pass;
+
+    # whether or not a staggered layout should stagger in the y direction
+    # as well as the x direction (always False in the experiments reported
+    # in the paper)
+    def getStaggerY(self) -> bool:
+        pass;
+
+    # the file to output the results of the simulation. The filename
+    # should not include a path, and the file will be placed in the
+    # "data" directory. For example "7mCircle 100mField 0.5mPits.csv"
+    def getOutputFileName(self) -> str:
+        pass;
+
+    # the number of holes at which to save a text file representing
+    # the field (with holes and treasure). The file can be read by
+    # CreateFieldImage.py to produce an image.
+    def getPrintAtHoles(self) -> int:
+        pass;
+
+    # get the Player that implements the layout algorithm chosen for
+    # the experiment (always a HexagonalLikePlayer in the experiments
+    # reported in the paper)
+    def getPlayer(self) -> Player:
+        pass;
+
+# A class that runs an experiment described by an Experiment object,
+# and outputs results to a file as well as (optionally) standard output
+class ExperimentRunner:
+
+    # create an ExperimentRunner with the experiment to run
+    def __init__(self, experiment: Experiment):
+        self.mExperiment = experiment;
+
+    # Do an experiment simulating archaeological digs over range of hole numbers.
+    # For each number of holes experiment.getNumRepeats() iterations are run.
+    # The data is saved in experiment.mOutputFileName().
+    # The data is also printed to standard out if printData is True.
+    def runExperiment(self, printData = True) -> None:
+        # get the specifications from mExperiment:
+
+        fieldSize = self.mExperiment.getFieldSize();
+        holeSize = self.mExperiment.getHoleSize(); # values of 0.5 and 1 are used in the article
+        # increment number of holes by this value each iteration
+        holeIncrement = self.mExperiment.getHoleIncrement(); # set to 1 for HexagonalLikePlayer etc, and 10 for RandomPlayer etc
+        maxHoles = self.mExperiment.getMaxHoles(); # stop when this number of holes is reached unless we reach 100% success rate beforehand
+
+        # set whether we are using real world data and where it can be found
+        realWorldData = self.mExperiment.getRealWorldData();
+        realWorldDataFile = self.mExperiment.getRealWorldDataFile();
+
+        # if realWorldData is False, set the treasure shape and dimensions
+        treasureShape = self.mExperiment.getTreasureShape(); # can be "rectangle" or "circle"
+        # if circle - note this is the radius, while the diameter was given in the article:
+        treasureRadius = self.mExperiment.getTreasureRadius();
+        # if rectangle:
+        treasureWidth = self.mExperiment.getTreasureWidth();
+        treasureHeight = self.mExperiment.getTreasureHeight();
+
+        numRepeats = self.mExperiment.getNumRepeats(); #10000 in the article simulations
+
+        printAtHoles = self.mExperiment.getPrintAtHoles();
+
+        outputFileName = self.mExperiment.getOutputFileName();
+
+        #=====================================================================================
+        # These parameters are not changed for experiments reported in the article
+
+        # use a left and right border, this was always True for experiments reported in the article
+        LRBorder = self.mExperiment.getLRBorder();
+        # stagger in the Y direction as well as the X. Some Players are already staggered in the X direction
+        # Note that for experiments reported in the article staggerY was always False.
+        staggerY = self.mExperiment.getStaggerY();
+        #=====================================================================================
+
+        print("generating \"" + self.mExperiment.getOutputFileName() + "\"");
+        progress_columns = (
+            "[progress.description]{task.description}",
+            BarColumn()
+        )
+        with Progress(*progress_columns) as progress:
+            # set up the progress bar
+            task = progress.add_task("generating...", total=10100, start=False);
+            if printData:
+                if realWorldData:
+                    print("realworld, field:", fieldSize, "hole size:", holeSize, "stagger Y:", staggerY);
+                elif treasureShape == "circle":
+                    print("circle, field:", fieldSize, "hole size:", holeSize, "treasure radius:", treasureRadius, "stagger Y:", staggerY);
                 else:
-                    field.placeRealWorldTreasure(data = realWorldDataCache);
-            else:
-                field = IntersectField(fieldSize, fieldSize);
-                if treasureShape == "circle":
-                    field.placeCircularTreasure(treasureRadius);
-                else:
-                    field.placeRectangularTreasure(treasureWidth, treasureHeight);
-
-            # player creation: change the player here
-            player = HexagonalLikePlayer(field, holeSize, holes, LRBorder, staggerY);
-            #player = NonStaggeredPlayer(field, holeSize, holes);
-            #player = HexagonalPlayer(field, holeSize, holes, staggerY);
-            #player = HaltonPlayer(field, holeSize, holes, LRBorder);
-            #player = NonStaggeredPlayer(field, holeSize, holes);
-            #player = RandomPlayer(field, holeSize, holes, LRBorder);
-
-            # print class of Player on first iteration
-            if (holes==1 and repeats == 0):
-                print ("class:", player.__class__);
+                    print("rectangle, field:", fieldSize, "hole size:", holeSize, "treasure dimensions:", str(treasureWidth) + "x" + str(treasureHeight), "stagger Y:", staggerY);
             
-            if not(new):
-                # we have seen this same layout from the player for a previous value of "holes",
-                # skip the repeats for this value
-                break;
-            
-            try:
-                result = player.play();
+            # This is the value of the actual number of holes dug for the previous value of "holes".
+            # As this is before any value of "holes" we set to -1
+            lastHole = -1;
 
-                # Check for layout errors, usually because the desired layout with the given holeSize won't fit on the field.
-                # Use repeats == 1 as it weans out the "not new" number of holes
-                if repeats == 1 and (isinstance(player, HexagonalPlayer) or isinstance(player, HexagonalLikePlayer)):
-                    if player.layoutError:
-                        print("layout algorithm error: probably too many holes for the field size");
-                    # d = calculateHoleDistances(field, False);
-                    # if abs(d[0] - d[1]) > 0.0001:
-                    #     print("not hexagonal");  
-                    #     calculateHoleDistances(field, True);
-                if result[0]:
-                    # the player uncovered treasure
-                    successes += 1;
-                    if (realWorldData):
-                        artefactCount += player.artefactCount;
-                        numHolesSucceed += player.numHolesSucceed;
-                
-                if holesDug == -1:
-                    # this is the first repeat for this value of "holes"
-                    holesDug = result[1];
-                elif holesDug != result[1]:
-                    # sanity check that this repeat resulted in the same number of holes being dug
-                    # as the previous repeat. We assume all Players obey this.
-                    print("ERROR: layout algorithm returned inconsistent number of holes dug");
-                    exit();
-                
-                # print field decision: optionally print the field. Change the value that holesDug is compared to as needed
-                # Note that the value refers to actual holes dug, not the value of 'holes'
-                if (holesDug == 120) and repeats == 1:
-                    printField(field, realWorldData, treasureShape, fieldSize, holeSize, treasureRadius, treasureWidth, treasureHeight, holesDug, player.__class__.__name__);
-                
-                # check if this layout is new on the first repeat
-                if repeats == 0:
-                    if lastHole == holesDug:
-                        # we have seen this layout for the previous value of "holes"
-                        new = False;
-                    lastHole = holesDug;
-            except:
-                print("ERROR");
-                traceback.print_exc();
-                exit();
+            # this is where we cache the real world data to avoid having to read the data file on each iteration
+            realWorldDataCache = None;
+            outputFile = Path("data/" + outputFileName);
+            outputFile.parent.mkdir(exist_ok=True, parents=True)
+            with open("data/" + outputFileName, "w") as outputFile:
+            #outputFile = open("data/" + outputFileName, "a");
+                outputFile.write("desiredholes, actualholes, successrate\n");
+                outputFile.write("0, 0, 0\n");
+                outputFile.flush();
 
-        if new:
-            if (realWorldData):
-                print (holes, holesDug, successes * 100 / numRepeats, artefactCount / numRepeats, numHolesSucceed / numRepeats);
-            else:
-                print (holes, holesDug, successes * 100 / numRepeats);
+                # iterate over number of holes. "holes" is the desired number of holes passed to the
+                # Player. The actual number the Player digs may vary according to its layout algorithm
+                for holes in range(1, maxHoles+1, holeIncrement):
+                    successes = 0;
+                    holesDug = -1;
 
-# choose what experiment you want to run
-exploreNumberOfHoles();
-#doSpecificGridExperiment();
-#testHexagonality();
+                    # Keep track of whether this layout is new: some Players such as HexagonalLikePlayer
+                    # will use the same actual number of holes (and layout) for several consecutive desired number of holes.
+                    # If we find that the layout is not new we skip the repeats for that value of "holes".
+                    new = True;
 
+                    artefactCount = 0;
+                    numHolesSucceed = 0;
+
+                    # run many tests for this number of "holes"
+                    for repeats in range(0, numRepeats):
+                        if realWorldData:
+                            field = RealWorldField(fieldSize, fieldSize);
+                            # cache the real world data to avoid reading from the file every time.
+                            # The data doesn't change throughout this function.
+                            if realWorldDataCache == None:
+                                field.placeRealWorldTreasure(csvFileName=realWorldDataFile);
+                                realWorldDataCache = field.getData();
+                            else:
+                                field.placeRealWorldTreasure(data = realWorldDataCache);
+                        else:
+                            field = IntersectField(fieldSize, fieldSize);
+                            if treasureShape == "circle":
+                                field.placeCircularTreasure(treasureRadius);
+                            else:
+                                field.placeRectangularTreasure(treasureWidth, treasureHeight);
+
+                        player = self.mExperiment.getPlayer(field, holes);
+                        # old player creation
+                        #player = HexagonalLikePlayer(field, holeSize, holes, LRBorder, staggerY);
+                        #player = NonStaggeredPlayer(field, holeSize, holes);
+                        #player = HexagonalPlayer(field, holeSize, holes, staggerY);
+                        #player = HaltonPlayer(field, holeSize, holes, LRBorder);
+                        #player = NonStaggeredPlayer(field, holeSize, holes);
+                        #player = RandomPlayer(field, holeSize, holes, LRBorder);
+
+                        # print class of Player on first iteration
+                        if (printData and holes==1 and repeats == 0):
+                            print ("class:", player.__class__);
+                        
+                        if not(new):
+                            # we have seen this same layout from the player for a previous value of "holes",
+                            # skip the repeats for this value
+                            break;
+                        
+                        try:
+                            result = player.play();
+
+                            # Check for layout errors, usually because the desired layout with the given holeSize won't fit on the field.
+                            # Use repeats == 1 as it weans out the "not new" number of holes
+                            if repeats == 1 and (isinstance(player, HexagonalPlayer) or isinstance(player, HexagonalLikePlayer)):
+                                if player.layoutError:
+                                    print("layout algorithm error: probably too many holes for the field size");
+                                # d = calculateHoleDistances(field, False);
+                                # if abs(d[0] - d[1]) > 0.0001:
+                                #     print("not hexagonal");  
+                                #     calculateHoleDistances(field, True);
+                            if result[0]:
+                                # the player uncovered treasure
+                                successes += 1;
+                                if (realWorldData):
+                                    artefactCount += player.artefactCount;
+                                    numHolesSucceed += player.numHolesSucceed;
+                            
+                            if holesDug == -1:
+                                # this is the first repeat for this value of "holes"
+                                holesDug = result[1];
+                            elif holesDug != result[1]:
+                                # sanity check that this repeat resulted in the same number of holes being dug
+                                # as the previous repeat. We assume all Players obey this.
+                                print("ERROR: layout algorithm returned inconsistent number of holes dug");
+                                exit();
+                            
+                            # print field decision: optionally print the field. Change printAtHoles as needed
+                            # Note that the value refers to actual holes dug, not the value of 'holes'
+                            if (holesDug == printAtHoles) and repeats == 1:
+                                printField(field, realWorldData, treasureShape, fieldSize, holeSize, treasureRadius, treasureWidth, treasureHeight, holesDug, player.__class__.__name__, staggerY);
+                            
+                            # check if this layout is new on the first repeat
+                            if repeats == 0:
+                                if lastHole == holesDug:
+                                    # we have seen this layout for the previous value of "holes"
+                                    new = False;
+                                lastHole = holesDug;
+                        except:
+                            print("ERROR");
+                            traceback.print_exc();
+                            exit();
+
+                    if new:
+                        outputFile.write(str(holes) + ", " + str(holesDug) + ", " + str(successes * 100 / numRepeats) + "\n");
+                        outputFile.flush();
+                        if printData:
+                            if (realWorldData):
+                                print (holes, holesDug, successes * 100 / numRepeats, artefactCount / numRepeats, numHolesSucceed / numRepeats);
+                            else:
+                                print (holes, holesDug, successes * 100 / numRepeats);
+                        if (successes == numRepeats):
+                            progress.start_task(task);
+                            progress.update(task, advance=10100);
+                            return;
+                progress.start_task(task);
+                progress.update(task, advance=10100);
+if __name__ == "__main__":
+    print("Experiments.py is now the main file for this project");

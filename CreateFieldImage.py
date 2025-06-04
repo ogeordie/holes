@@ -1,6 +1,6 @@
-# A utility that produces a graphical display of a Field with holes and treasure.
-# Files can be generated with Holes.py
+# Holes
 
+# Holes is a program for simulations of archaeological excavations.
 
 # Copyright 2024 Geordie Oakes
 
@@ -15,10 +15,15 @@
 # If not, see https://www.gnu.org/licenses/gpl-3.0.html.
 
 
+# This file is a utility that produces a graphical display of a Field with holes and treasure.
+# Files can be generated with Holes.py.
+
+# To use paste the file name in the displayField() method (search "set file name")
+
 # File format:
 # 
 # The first line is "intersect" or "realworld" (see Holes.py for more detail on these).
-# The second line is the field size <x> <y>
+# The second line is the field size: <x> <y>
 #
 # If intersect:
 #   the third line starts "circularTreasure:" or "rectangularTreasure:" followed
@@ -34,8 +39,6 @@
 # For all cases, the remaining lines begin "hole:" followed by
 # <centreX>, <centreY>, <width> <height>
 # then "True" if the hole uncovers treasure otherwise "False".
-#
-# To use paste the file name in the displayField() method (search "set file name")
 
 # This code was only tested using the limited number of parameters explored in the article.
 # It may not be correct in all circumstances.
@@ -51,7 +54,9 @@ class CreateFieldImage(Widget):
     def __init__(self,  **kwargs):
         super().__init__(**kwargs);
         self.displayFactor = 0;
+
         self.displayField();
+#        self.export_as_image().save("square.png");
     
     def convertPoint(self, x, y):
         p = self.convertSize(x, y);
@@ -67,7 +72,7 @@ class CreateFieldImage(Widget):
     def displayField(self):
         # set file name:  change this to refer to the file with field data
         filename = "\
-intersectField 100 holesize 0.5 treasure 3.5 holes 120 HexagonalLikePlayer\
+realWorldField 100 holesize 1 holes 120 HexagonalLikePlayer\
 "
         self.f = open("" + filename, 'r');
         fieldType = self.f.readline();
@@ -83,7 +88,13 @@ intersectField 100 holesize 0.5 treasure 3.5 holes 120 HexagonalLikePlayer\
         Window.top = 50;
         Window.left = 50;
         
-        Line(points=[0,0,500, 500]);
+        with self.canvas:
+            Color(0, 0, 0);
+            Line(points=[0,0,1000,0, 1000, 1000, 0, 1000, 0,0], width=2);
+        
+        with self.canvas:
+            Color(1, 1, 1);
+            Rectangle(pos=(0,0), size=(1000, 1000));
 
         if fieldType.startswith("realworld"):
             self.displayRealWorldField();
@@ -92,6 +103,7 @@ intersectField 100 holesize 0.5 treasure 3.5 holes 120 HexagonalLikePlayer\
         else:
             print("error: type of field not recognized");
     
+    # display a field containing real world data on artefact distribution
     def displayRealWorldField(self):
         with self.canvas:
             Color(0, 0, 0);
@@ -126,6 +138,7 @@ intersectField 100 holesize 0.5 treasure 3.5 holes 120 HexagonalLikePlayer\
                     Rectangle(pos=(posX, posY), size=theSize);
                 line = self.f.readline();
 
+    # display a field containing circular or rectangular treasure
     def displayIntersectField(self):
         with self.canvas:
             Color(0, 0, 0);
@@ -169,8 +182,15 @@ intersectField 100 holesize 0.5 treasure 3.5 holes 120 HexagonalLikePlayer\
 class FieldApp(App):
     def build(self):
         self.widget = CreateFieldImage()
+        #self.widget.export_to_png("balck.png");
         return self.widget;
 
+    def export(self):
+        self.widget.export_to_png('layout paper/halton.png')
+
 if __name__ == '__main__':
-    FieldApp().run()
+    app = FieldApp();
+    app.run();
+    app.export();
+
     
