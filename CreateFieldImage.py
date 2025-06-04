@@ -72,7 +72,7 @@ class CreateFieldImage(Widget):
     def displayField(self):
         # set file name:  change this to refer to the file with field data
         filename = "\
-realWorldField 100 holesize 1 holes 120 HexagonalLikePlayer\
+intersectField 100 holesize 1 holes 120 HexagonalLikePlayer\
 "
         self.f = open("" + filename, 'r');
         fieldType = self.f.readline();
