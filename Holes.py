@@ -2,7 +2,7 @@
 
 # Holes is a program for simulations of archaeological excavations.
 
-# Copyright 2024 Geordie Oakes
+# Copyright 2024-2025 Geordie Oakes
 
 # This program is free software: you can redistribute it and/or modify it under the terms of the GNU 
 # General Public License v3 as published by the Free Software Foundation.
