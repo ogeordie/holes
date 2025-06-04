@@ -259,7 +259,9 @@ experiments running until 100% success rate is reached.
 Data produced using `Experiments.py` are output to the `data` directory.
 Figures and Tables are output to the `graphs` directory. By default `Experiments.py`
 uses pre-generated data from the `data` directory. If you wish to generate your own data
-set `generate` to `True` in `Experiments.py`. It may take many hours.
+set `generate` to `True` in `Experiments.py`. It may take many hours. Note that as the
+simulation involves pseudo-random processes, the results will differ slightly each time
+data is generated.
 
 
 ### Intersection Experiments
