@@ -186,7 +186,8 @@ class FieldApp(App):
         return self.widget;
 
     def export(self):
-        self.widget.export_to_png('layout paper/halton.png')
+        pass;
+        #self.widget.export_to_png('layout paper/halton.png')
 
 if __name__ == '__main__':
     app = FieldApp();
@@ -194,3 +195,4 @@ if __name__ == '__main__':
     app.export();
 
     
+
