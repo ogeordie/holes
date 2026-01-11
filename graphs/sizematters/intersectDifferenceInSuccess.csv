@@ -1,0 +1,14 @@
+Site Size (m),Effort Ratio,Maximum Difference in Success (percentage points),Optimal Test Pit Size
+1m diameter,1:1,-41,1m²
+1m diameter,2:1,7,0.25m²
+1m diameter,3:1,33,0.25m²
+1m diameter,4:1,49,0.25m²
+7m diameter,1:1,-12,1m²
+7m diameter,2:1,37,0.25m²
+7m diameter,3:1,56,0.25m²
+7m diameter,4:1,64,0.25m²
+28m diameter,1:1,-3,1m²
+28m diameter,2:1,38,0.25m²
+28m diameter,3:1,48,0.25m²
+28m diameter,4:1,57,0.25m²
+20m x 5m elongated,1:1,-9,1m²

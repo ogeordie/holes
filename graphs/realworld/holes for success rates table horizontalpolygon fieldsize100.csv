@@ -1,0 +1,6 @@
+Layout Algorithm,80% Success Rate (pits),95% Success Rate (pits),100% Success Rate (pits)
+Hexagonal-like,236.07,316.44,396
+StaggerXY,171.16,248.55,323
+RandomisedStaggerXY,187.06,271.67,480
+Halton,208.2,347.26,791
+Random,295.12,571.24,1581

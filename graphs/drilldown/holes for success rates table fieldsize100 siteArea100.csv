@@ -1,0 +1,26 @@
+Site Shape (Elongation Ratio),Layout Algorithm,80% Success Rate (pits),95% Success Rate (pits),100% Success Rate (pits)
+Square (1:1),Hexagonal-like,68.71,85.4,120
+,StaggerXY,71.72,111.52,168
+,RandomisedStaggerXY,78.67,120.84,224
+,Halton,86.37,142.67,311
+,Random,131.13,243.56,731
+Vertically Elongated (5:1),Hexagonal-like,68.81,110.13,143
+,StaggerXY,69.04,101.47,132
+,RandomisedStaggerXY,79.62,125.44,304
+,Halton,87.96,148.5,381
+,Random,126.91,240.57,691
+Horizontally Elongated (5:1),Hexagonal-like,210.95,305.44,357
+,StaggerXY,62.7,77.72,99
+,RandomisedStaggerXY,71.59,111.98,270
+,Halton,88.74,152.61,401
+,Random,127.6,242.68,701
+Vertically Elongated (20:1),Hexagonal-like,243.54,338.7,460
+,StaggerXY,242.51,324.21,460
+,RandomisedStaggerXY,108.9,210.74,460
+,Halton,83.11,159.93,661
+,Random,125.84,251,891
+Horizontally Elongated (20:1),Hexagonal-like,730.24,1005.72,1147
+,StaggerXY,175.42,237.51,340
+,RandomisedStaggerXY,100.33,179.88,399
+,Halton,86.93,165.92,601
+,Random,127.78,259.94,851
