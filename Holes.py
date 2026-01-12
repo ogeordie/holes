@@ -104,6 +104,8 @@
 # success rate. (We assume `actualNumberOfHolesDug` will be the same when `<number of holes>`
 # is the same). The output is saved to the file specified in the `Experiment` subclass.
 
+# This code treats the top left coordinate of Fields as (0,0).
+
 # This code was only tested with the experiments explored in the articles. It 
 # may not be correct in all circumstances.
 
