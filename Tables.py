@@ -311,7 +311,8 @@ def areaUnderCurve(csvFileName:str, maximumHoles = 6000, suppressWarning:bool = 
 
 # Returns the absolute maximum difference in success between layoutAlgorithm1 and layoutAlgorithm2
 # for the given treasure dimensions, fieldSize, and siteArea. Data are assumed to exist in
-# the data/drilldown directory.
+# the data/drilldown directory. It is also assumed that the data for each layout algorithm
+# reach 100% success rate at the final number of holes.
 def getMaximumDifferenceInSuccessLayout(fieldSize:int, siteArea:int, layoutAlgorithm1:str, layoutAlgorithm2:str, treasureWidth:float, treasureHeight:float, maxHoles = None) -> float:
     fileStart = "data/drilldown/" + str(treasureWidth) + "x" + str(treasureHeight) + "rectangle";
     fileEnd = "fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv"
@@ -332,16 +333,26 @@ def getMaximumDifferenceInSuccessLayout(fieldSize:int, siteArea:int, layoutAlgor
         holes2.append(int(row2["actualholes"]));
         successes2.append(float(row2["successrate"]));
     
-    holeLimit = min(holes1[len(holes1) - 1], holes2[len(holes2) - 1]);
+    holeLimit = max(holes1[len(holes1) - 1], holes2[len(holes2) - 1]);
     if maxHoles != None:
         holeLimit = maxHoles;
+    
+    if maxHoles == None and (successes1[len(holes1) - 1] != 100 or successes2[len(holes2) - 1] != 100):
+        print("error: data don't go to 100% success rate");
+        exit()
 
-    max = 0;
+    maximum = 0;
     for hole in range(holeLimit + 1):
-        success1 = interpolateHoles(hole, holes1, successes1);
-        success2 = interpolateHoles(hole, holes2, successes2);
+        if hole > holes1[len(holes1) - 1]:
+            success1 = 100;
+        else:
+            success1 = interpolateHoles(hole, holes1, successes1);
+        if hole > holes2[len(holes2) - 1]:
+            success2 = 100;
+        else:
+            success2 = interpolateHoles(hole, holes2, successes2);
         diff = abs(success2 - success1);
-        if diff > max:
-            max = diff;
+        if diff > maximum:
+            maximum = diff;
 
-    return max;
+    return maximum;

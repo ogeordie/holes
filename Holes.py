@@ -80,8 +80,8 @@
 # "Layout Matters". These files trigger the various experiments and the generation
 # of graphs and tables. Note that one can set the "go" variables in these files to
 # control what is triggered (for example if one wishes to use pre-generated data rather
-# than generating it which can take over 42 hours for "Layout Matters" experiments).
-# The file `Holes.py` contains code to run simulations as described above.
+# than generating it which can take over 42 hours on a fast computer for "Layout Matters"
+# experiments). The file `Holes.py` contains code to run simulations as described above.
 # There is also the functionality to save a field (with holes and treasure) to a text file,
 # by calling `ExperimentRunner.printExperiment()` (which can also be triggered from
 # `Experiments.py` and `LayoutExperiments.py` by setting `goPrintExperiments` to `True`).
@@ -99,7 +99,7 @@
 #     successes = successes + 1
 # actualNumberOfHolesDug = result[1]
 # ```
-# Then after the the many iterations, the output is `<number of holes>`,
+# Then after the many iterations, the output is `<number of holes>`,
 # `actualNumberOfHolesDug`, and `successes * 100 / <number of iterations>` which is the
 # success rate. (We assume `actualNumberOfHolesDug` will be the same when `<number of holes>`
 # is the same). The output is saved to the file specified in the `Experiment` subclass.
@@ -402,6 +402,7 @@ class RealWorldData:
         self.__normalisedArtefacts = [];
         for a in self.__rawArtefacts:
             self.__normalisedArtefacts.append((a[0] - self.minX, a[1] - self.minY));
+
         # adjust minimum and maximum to the normalised values
         self.maxX = self.maxX - self.minX;
         self.maxY = self.maxY - self.minY;
@@ -455,10 +456,10 @@ class RealWorldData:
         # normalisedArtefactCount = 0;
         # for i in range(len(self.__normalisedArtefacts)):
         #     (x,y) = self.__normalisedArtefacts[i];
-        #     if hole.centreX - hole.width/2 < self.topLeftX + x and \
-        #         hole.centreX + hole.width/2 > self.topLeftX + x and \
-        #         hole.centreY - hole.height/2 < self.topLeftY + y and \
-        #         hole.centreY + hole.height/2 > self.topLeftY + y:
+        #     if hole.centreX - hole.width/2 <= self.topLeftX + x and \
+        #         hole.centreX + hole.width/2 >= self.topLeftX + x and \
+        #         hole.centreY - hole.height/2 <= self.topLeftY + y and \
+        #         hole.centreY + hole.height/2 >= self.topLeftY + y:
         #             normalisedArtefactCount += 1;
         # #if (normalisedArtefactCount > 0):
         # #    print("raw data:", normalisedArtefactCount);
@@ -664,7 +665,7 @@ class PolygonTreasure():
         holeTop = hole.centreY - hole.height / 2;
         holeBottom = hole.centreY + hole.height / 2;
 
-        # can leave this out if it doesn't make the intersect check more efficient
+        # check the bounding box for efficiency
         if holeLeft > self.topLeftX + self.maxX or \
             holeRight < self.topLeftX or \
             holeTop > self.topLeftY + self.maxY or \
@@ -1394,16 +1395,16 @@ def testHexagonality() -> None:
 # the chosen player after play() is called.
 def testBorders():
     field = IntersectField(100, 100);
-    #player = HexagonalLikePlayer(field, 0.5, 1000, False, False, False, 8);
-    player = RandomPlayer(field, 0.5, 10000, False);
-    #player = HaltonPlayer(field, 0.5, 2000, False);
+    player = HexagonalLikePlayer(field, 0.5, 100, True, True, False, 8);
+    #player = RandomPlayer(field, 0.5, 1000, True);
+    #player = HaltonPlayer(field, 0.5, 1000, True);
     
     field.placeRectangularTreasure(10, 10);
 
     # Note, returnAfterHit is False
-    player.play(False);
+    result = player.play(False);
 
-    field.print("random no border");
+    #field.print("staggerXY1");
 
     leftBorder = field.width;
     rightBorder = field.width;
