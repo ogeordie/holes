@@ -118,8 +118,8 @@ def maximumDifferenceInSuccess(smallHolesFileName:str, bigHolesFileName:str, rat
 def crossoverPoints(fileName:str, layoutAlgorithm:str) -> tuple[float, float]:
     csvFile = open("data/summary/"+fileName, 'r');
     lines = csv.DictReader(csvFile, delimiter=',', skipinitialspace=True);
-    previousDiff = 0;
-    previousRatio = -1000;
+    previousDiff = None;
+    previousRatio = None;
     verticalCrossover = None;
     horizontalCrossover = None;
 
@@ -127,11 +127,11 @@ def crossoverPoints(fileName:str, layoutAlgorithm:str) -> tuple[float, float]:
         success = float(row[layoutAlgorithm]);
         diff = success - float(row["halton"]);
         ratio = float(row["ratio"]);
-        if previousDiff != 0:
-            if previousDiff < 0 and diff > 0:
+        if previousDiff != None:
+            if previousDiff <= 0 and diff > 0:
                 if verticalCrossover == None:
                     verticalCrossover = previousRatio + ((0 - previousDiff) / (diff - previousDiff)) * (ratio - previousRatio);
-            if previousDiff > 0 and diff < 0:
+            if previousDiff >= 0 and diff < 0:
                 if horizontalCrossover == None:
                     horizontalCrossover = previousRatio + ((0 - previousDiff) / (diff - previousDiff)) * (ratio - previousRatio);
         previousDiff = diff;

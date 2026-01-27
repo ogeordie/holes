@@ -26,7 +26,7 @@
 # "treasure" and "site" in the code), either specified by a circle, rectangle, or polygon
 # (for intersection experiments), or by real-world data on artefact distribution from digs
 # in NSW Australia (for detection experiments in "Size Matters"). See the csv files in the
-# `real world data` directory for the real-world data.
+# `real world data` directory for the real-world data and polygon `shapefile` definition.
 
 # The pits are placed according to a layout algorithm. Layout algorithms are implemented by 
 # subclasses of the class `Player`. Calling `Player.play()` performs one archaeological dig 
@@ -40,17 +40,13 @@
 # - Halton by `HaltonPlayer`
 # - Random by `RandomPlayer`
 # - `HexagonalPlayer` was used to test if it had similar performance to the
-# `HexagonalLikePlayer`, which it did.
-#
-# See the document `size matters and layout matters layout algorithms.pdf` for
-# details of the layout algorithms.
-#
-# There is also `HexagonalPlayer` which was used to test if it had similar performance to the
-# `HexagonalLikePlayer`, which it did. See the document `size matters and layout matters layout
-# algorithms.pdf` for explanation of the layout algorithms.
+# `HexagonalLikePlayer`, which it did.  
+
+# See the document `size matters and layout matters layout algorithms.pdf`
+# for details of the layout algorithms.
 
 # `ExperimentRunner.runExperiment()` in Holes.py is the entry point to the simulation, and an
-# experiment is described by subclasses of the `Experiment` class. This defines all
+# experiment is described by subclasses of the `Experiment` class. This class defines all
 # parameters except number of holes (field size, hole size, treasure specification, player 
 # type, etc.). For each number of holes (from 1 to a maximum value, or until 100% success rate
 # is reached) the inner simulation procedure is run 10000 times in "Size Matters"
@@ -97,16 +93,16 @@
 # result = player.play()
 # if result[0]:
 #     successes = successes + 1
-# actualNumberOfHolesDug = result[1]
+# actualNumberOfHoles = result[1]
 # ```
 # Then after the many iterations, the output is `<number of holes>`,
-# `actualNumberOfHolesDug`, and `successes * 100 / <number of iterations>` which is the
-# success rate. (We assume `actualNumberOfHolesDug` will be the same when `<number of holes>`
+# `actualNumberOfHoles`, and `successes * 100 / <number of iterations>` which is the
+# success rate. (We assume `actualNumberOfHoles` will be the same when `<number of holes>`
 # is the same). The output is saved to the file specified in the `Experiment` subclass.
 
-# This code treats the top left coordinate of Fields as (0,0).
+# The code defines the top left of the field as the origin (0,0).
 
-# This code was only tested with the experiments explored in the articles. It 
+# The code was only tested with the experiments explored in the articles. It 
 # may not be correct in all circumstances.
 
 # See the README.md file for more details.
@@ -819,6 +815,8 @@ class StaggeredPlayer(Player):
     # algorithm. NOTE: this is the total number of holes that would be dug if returnAfterHit was
     # False).
     #
+    # The top left of the field is considered to be 0,0.
+    #
     # xHoles and yHoles are numbers of holes in the x and y directions respectively.
     # borderX and borderY are the left and top borders respectively where no holes are placed.
     # dX and dY are the distances between holes in the x and y directions respectively.
@@ -828,10 +826,26 @@ class StaggeredPlayer(Player):
     # and the standard deviation dX/stdDevDivisor for the x direction and dY/stdDevDivisor for
     # the y direction.
     # The borders on the right and bottom of the field are determined by the above parameters
-    # (but should usually be equal to the borders on the left and top respectively).
+    # but it is assumed that they are equal to the borders on the left and top respectively
+    # to 2 decimal places.
     # returnAfterHit indicates whether to return as soon as treasure is found, but the number of
     # holes returned will be as if this were False.
     def doStaggeredLayout(self, field:Field, holeSize:float, xHoles:int, borderX:float, dX:float, yHoles:int, borderY:float, dY:float, staggerY:bool, randomise:bool = False, stdDevDivisor = 1, returnAfterHit:bool = True) -> tuple[bool, int]:
+        # check the parameters fit properly on the field
+        totalX = (2 * borderX) + ((xHoles - 0.5) * dX);
+        totalY = (2 * borderY) + ((yHoles - 1) * dY);
+        if staggerY:
+            totalY = (2 * borderY) + ((yHoles - 0.5) * dY);
+        if round(totalX, 2) != round(field.width, 2):
+            print("error: staggered layout does not fit the field width");
+            print(self.__class__.__name__, xHoles, yHoles, borderX, borderY, dX, dY, staggerY);
+            exit();
+        if round(totalY, 2) != round(field.height, 2):
+            print("error: staggered layout does not fit the field height");
+            print(self.__class__.__name__, xHoles, yHoles, borderX, borderY, dX, dY, staggerY);
+            exit();
+        
+        # do the layout
         row = 0;
         holesMade = 0;
         found = False;
@@ -865,7 +879,7 @@ class StaggeredPlayer(Player):
                     onLeftBorder = round(pos_x, 2) == round(borderX, 2);
                     onRightBorder = round(pos_x, 2) == round(field.width - borderX, 2);
                     onTopBorder = round(pos_y, 2) == round(borderY, 2) ;
-                    onBottomBorder = round(pos_y, 4) == round(field.height - borderY, 4);
+                    onBottomBorder = round(pos_y, 2) == round(field.height - borderY, 2);
                     if not(onLeftBorder or onRightBorder):
                         if randomx < startX:
                             randomx = startX;
@@ -926,7 +940,7 @@ class HaltonPlayer(Player):
     # Digs holes according to the scrambled Halton distribution.
     # Returns whether treasure was found and the number of holes
     # determined by the layout algorithm (which will be equal to the
-    # number of holes supplied to the constructor).
+    # number of holes supplied to the constructor for this layout).
     # If the field is a RealWorldField, sets self.numHolesSucceed and self.artefactCount
     # are set when the function returns (NOTE THAT THESE TWO VALUES ARE NOT ACCURATE UNLESS
     # returnAfterHit IS False).
@@ -953,22 +967,29 @@ class HaltonPlayer(Player):
 
 
 # A Player that uses the hexagonal-like layout algorithm
-# (see the Layout Matters paper and the "size matters and layout matters
+# (see the "Layout Matters" paper and the "size matters and layout matters
 # layout algorithms.pdf" document).
-# This player is staggered horizontally - If the distance between holes
+# This layout is staggered horizontally - If the distance between holes
 # in the same row is a, every other row is shifted right by a/2.
+# Numbers of holes in a row and the number of rows are chosen
+# to be close to the desired number of holes (supplied to the constructor)
+# while also being close to hexagonal (i.e. the distance between holes in a
+# row is nearly equal to the distance between the closest holes on adjacent
+# rows, forming equilateral triangles). If staggerY is True, this hexagonal
+# constraint will hold "before" the additional staggering occurs, and because
+# of this staggering the layout can no longer be called hexagonal.
+#
 # If LRBorder (left and right border) is True, each even row
-# has a border of a/2 (and so the border for each odd row is a as it is staggered).
+# has a left border of a/2 (and so the left border for each odd row is a
+# as it is staggered). The right borders will be a for non-staggered rows
+# and a/2 for staggered rows.
 # If the distance between rows is c, the top and bottom borders are c/2.
-# If staggerY is True, each second hole in each row is shifted down by c/2.
+# If staggerY is True, each second hole in each row is shifted down by c/2,
+# and the closest holes to the top and bottom will be c/2 from the field edge.
 # If randomise is True, hole positions are shifted in both x and y directions
 # by a random amount according to a normal distribution, with the original
 # position as mean, and standard deviation of dX/stdDevDivisor and dY/stdDevDivisor
 # in each direction respectively.
-#
-# Numbers of holes in a row and the number of rows are chosen
-# to be close to the desired number of holes while also being close
-# to hexagonal.
 class HexagonalLikePlayer(StaggeredPlayer):
 
     # create the player with the given values (see class comments)
@@ -1059,7 +1080,7 @@ class HexagonalLikePlayer(StaggeredPlayer):
 # in the same row is a, each even row is shifted right by a/2.
 class HexagonalPlayer(HexagonalLikePlayer):
 
-    # use the give values. Note staggerY =True is not currently supported for this player.
+    # use the given values. Note staggerY =True is not currently supported for this player.
     def __init__(self, field:Field, holeSize:float, numHoles:int, staggerY:bool = False):
         HexagonalLikePlayer.__init__(self, field, holeSize, numHoles, True, staggerY);
         if staggerY:
@@ -1202,6 +1223,7 @@ class RandomPlayer(Player):
 
     # set the random values used in positioning holes on the field, if the user
     # wants to reuse these values
+    # NOTE: caching random values is currently not used and not tested properly
     def setHoleSpecification(self, holeSpec:RandomHolesSpecification) -> None:
         self.__holeSpecification = holeSpec;
         if holeSpec != None:
@@ -1212,6 +1234,7 @@ class RandomPlayer(Player):
     
     # get the random values used in positioning holes on the field, if the user
     # wants to reuse these values. Note this should be called after play().
+    # NOTE: caching random values is currently not used and not tested properly
     def getHoleSpecification(self) -> RandomHolesSpecification:
         return RandomHolesSpecification(self.xrandom, self.yrandom);
     
@@ -1285,7 +1308,8 @@ class RandomPlayer(Player):
             x = randomXValue * (self.__field.width - 2 * self.__border) + self.__border;
             y = randomYValue * (self.__field.height - 2 * self.__border) + self.__border;
             hole = Hole(x, y, self.__holeSize, self.__holeSize);
-            if self.__usingHoleCache or not self.__intersectsExistingHole(hole):
+            if self.__usingHoleCache or (not self.__intersectsExistingHole(hole)):
+                # only dig the hole if it doesn't intersect another
                 hit = self.__field.digHole(self.__holeSize, x, y);
                 if not self.__usingHoleCache:
                     self.xrandom.append(randomXValue);
@@ -1395,17 +1419,18 @@ def testHexagonality() -> None:
 # the chosen player after play() is called.
 def testBorders():
     field = IntersectField(100, 100);
-    player = HexagonalLikePlayer(field, 0.5, 100, True, True, False, 8);
-    #player = RandomPlayer(field, 0.5, 1000, True);
+    player = HexagonalLikePlayer(field, 0.5, 2000, True, True, False, 8);
+    #player = RandomPlayer(field, 0.5, 2000, True);
     #player = HaltonPlayer(field, 0.5, 1000, True);
     
     field.placeRectangularTreasure(10, 10);
 
     # Note, returnAfterHit is False
     result = player.play(False);
+    #field.print("test field");
+    testBordersOfField(field);
 
-    #field.print("staggerXY1");
-
+def testBordersOfField(field:Field, printBorders:bool = True):
     leftBorder = field.width;
     rightBorder = field.width;
     topBorder = field.height;
@@ -1422,8 +1447,13 @@ def testBorders():
         if field.height - currentHole.centreY < bottomBorder:
             bottomBorder = field.height - currentHole.centreY;
         i = i + 1;
-    print("left:", leftBorder, "right:", rightBorder);
-    print("top:", topBorder, "bottom:", bottomBorder);
+    if (printBorders):
+        print("left:", leftBorder, "right:", rightBorder);
+        print("top:", topBorder, "bottom:", bottomBorder);
+    elif (round(leftBorder, 2) != round(rightBorder, 2)) or (round(topBorder, 2) != round(bottomBorder, 2)):
+        print("error");
+        print("left:", leftBorder, "right:", rightBorder);
+        print("top:", topBorder, "bottom:", bottomBorder);
 
 
 # A class that describes an experiment to be run in the ExperimentRunner.
@@ -1436,16 +1466,16 @@ class Experiment:
         pass;
     
     # the length and width of the square holes to be dug.
-    # Values of 0.5m and 1m were used in the Size Matters article
-    # and 0.5m in Layout Matters
+    # Values of 0.5m and 1m were used in the "Size Matters" article
+    # and 0.5m in "Layout Matters"
     @abstractmethod
     def  getHoleSize(self) -> float:
         pass;
     
     # the number by which the number of holes is incremented each time
     # round the simulation.
-    # 1 was used in the Size Matters article
-    # In Layout Matters, RandomPlayer and HaltonPlayer experiments
+    # 1 was used in the "Size Matters" article
+    # In "Layout Matters", RandomPlayer and HaltonPlayer experiments
     # had a value of 10, the rest 1
     @abstractmethod
     def getHoleIncrement(self) -> int:
@@ -1454,7 +1484,7 @@ class Experiment:
     # the number by which the number of holes is incremented each time round
     # the simulation for smaller numbers of holes, until the
     # getSmallNumHolesIncrementCutoff() is reached.
-    # In Layout Matters, Random and Halton experimments had a value of 3
+    # In "Layout Matters", Random and Halton experiments had a value of 3
     @abstractmethod
     def getSmallNumHolesIncrement(self) -> int:
         pass;
@@ -1499,7 +1529,7 @@ class Experiment:
         pass;
 
     # if getTreasureShape() returns "circle", this is the radius of the treasure.
-    # Note that in the Size Matters paper diameters are cited rather than radius.
+    # Note that in the "Size Matters" paper diameters are cited rather than radius.
     @abstractmethod
     def getTreasureRadius(self) -> float:
         pass;
@@ -1525,7 +1555,7 @@ class Experiment:
     def getRotatePolygon(self) -> bool:
         pass;
     
-    # returns the divisor of width between holes (or rows) which is one standard deviation if
+    # returns the divisor of width between holes (and rows) which is one standard deviation if
     # randomising hole positions. See StaggeredPlayer.doStaggeredLayout() for more details.
     @abstractmethod
     def getStdDeviationDivisor(self) -> int:
@@ -1555,23 +1585,24 @@ class Experiment:
     # indicates whether to stop a dig once treasure is found.
     # If running a realworld data experiment and want the artefact
     # count and number of holes succeeding after calling play(),
-    # this should be False. Note data on number of holes dug
-    # ignore this directive, and are the total number of holes
-    # that would have been dug if this were False.
+    # this should be False. Note data returned from Player.play() on number of
+    # holes dug are the number of holes that would have been dug if this
+    # were False (i.e. the number determined by the layout algorithm).
     @abstractmethod
     def getReturnAfterHit(self) -> bool:
         pass;
 
     # whether or not the layout algorithm should enforce left and right borders
     # on the field in which no holes are dug (always True in the experiments
-    # reported in the paper).
+    # reported in the papers). For Random and Halton players, this determines
+    # whether borders are made on all edges of the field.
     @abstractmethod
     def getLRBorder(self) -> bool:
         pass;
 
     # whether or not a staggered layout should stagger in the y direction
     # as well as the x direction (always False in the experiments reported
-    # in the paper)
+    # in "Size Matters", but True is also used in "Layout Matters").
     @abstractmethod
     def getStaggerY(self) -> bool:
         pass;
@@ -1584,14 +1615,14 @@ class Experiment:
 
     # the file to output the results of the simulation. The file will be
     # placed in the "data" directory. For example "7mCircle 100mField 0.5mPits.csv".
-    # For Layout Matters, this includes the subdirectory of the data
+    # For "Layout Matters", this includes the subdirectory of the data
     # directory in which to save the data.
     @abstractmethod
     def getOutputFileName(self) -> str:
         pass;
 
     # get the Player that implements the layout algorithm chosen for
-    # the experiment. For Size Matters this was always a HexagonalLikePlayer.
+    # the experiment. For "Size Matters" this was always a HexagonalLikePlayer.
     @abstractmethod
     def getPlayer(self, field:Field, holes:int) -> Player:
         pass;

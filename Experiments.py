@@ -59,7 +59,7 @@ class BasicExperiment(Experiment):
         self.mStopAtSuccess = 100;
         self.mReturnAfterHit = True;
         self.mLRBorder = True;
-        self.mstdDeviationDivisor = 1;
+        self.mStdDeviationDivisor = 1;
         self.mStaggerY = False;
         self.mRandomise = False;
         self.mOutputFileName = sizeMattersDirectory + "/experiment.csv"
@@ -118,7 +118,7 @@ class BasicExperiment(Experiment):
         return self.mPolygonFile;
 
     # see Experiment class for details
-    def getRotatePolygon(self):
+    def getRotatePolygon(self) -> bool:
         return self.mRotatePolygon;
     
     # see Experiment class for details
@@ -155,7 +155,7 @@ class BasicExperiment(Experiment):
 
     # see Experiment class for details
     def getStdDeviationDivisor(self) -> int:
-        return self.mstdDeviationDivisor;
+        return self.mStdDeviationDivisor;
 
     # see Experiment class for details
     def getOutputFileName(self) -> str:

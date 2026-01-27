@@ -276,7 +276,7 @@ def runRandomisedStaggerXY(fieldSize:int, treasureWidth:float, treasureHeight:fl
         experiment.mMaxHoles = numHoles;
     if startHoles != None:
         experiment.mStartHoles = startHoles;
-    experiment.mstdDeviationDivisor = stdDevFactor;
+    experiment.mStdDeviationDivisor = stdDevFactor;
     if addToFileName != "":
         addToFileName = " " + addToFileName;
     experiment.mOutputFileName = dir + "/" + str(treasureWidth) + "x" + str(treasureHeight) + "rectangle randomisedStaggerXY sd" + str(stdDevFactor) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
@@ -389,7 +389,7 @@ def runPolygonRandomisedStaggerXY(fieldSize:int, polygonFile:str, stdDevFactor:i
     experiment.mRotatePolygon = rotate;
     experiment.mStaggerY = True;
     experiment.mRandomise = True;
-    experiment.mstdDeviationDivisor = stdDevFactor;
+    experiment.mStdDeviationDivisor = stdDevFactor;
     if rotate:
         experiment.mOutputFileName = "horizontalpolygon randomisedStaggerXY sd" + str(stdDevFactor) + " fieldsize" + str(fieldSize) + ".csv";
     else:
@@ -465,8 +465,7 @@ def runCircularStaggerXY(fieldSize:int, treasureRadius:float, numRepeats:int = g
 # The area under the curve is approximated by summing the success rates for each number
 # of holes, from 1 to maximumHoles (for cases where success data reaches 100% before
 # maximumHoles, 100% success rate is used for the remaining number of holes).
-# The raw success data must exist in the dir directory for each layout algorithm for the given
-# values of fieldSize and siteArea, for each treasure height in the heights list.
+# maximumHoles should be larger than any algorithm takes to reach 100%.
 # The graph will be shown in a window if showGraph is True, otherwise just saved.
 # The graph will zoom the y axis so that the mininum y value is the minimum value of the
 # minFieldName algorithm if zoomCentral is True.
@@ -556,7 +555,7 @@ def generatePolygonSuccessGraph(fieldSize:int, zoom:bool = False, showGraph:bool
 # This function compiles that data, writing the "area under the curve" of the success graphs for each
 # algorithm for each treasure dimensions to a file in the largeRatioDirectory named:
 # "summary large ratio fieldsize<fieldSize> siteArea<siteArea>.csv".
-# If showGraph is True a graph will be displayed in a window.
+# If showGraph is True a graph will be displayed in a window, otherwise just saved.
 # If addToFileName is set, its value will be added to the summary file produced.
 def generateSummaryGraphLargeRatio(fieldSize:int, siteArea:int, heights:list, showGraph:bool = False, addToFileName:str = "") -> None:
     maxHoles = 14000;
@@ -595,7 +594,7 @@ def generateSummaryGraphLargeRatio(fieldSize:int, siteArea:int, heights:list, sh
 # It assumes that the halton algorithm starts out performing better than the given algorithm for
 # larger vertical ratios, crosses over once and performs worse for a while at smaller vertical
 # and horizontal ratios, and crosses over again (once) and performs better for larger horizontal ratios.
-# See the Layout Matters paper and the summary graphs for more detail.
+# See the "Layout Matters" paper and the summary graphs for more detail.
 # If vertical is True, the crossover points for vertical elongation will be used (the first crossover),
 # otherwise crossover points for horizontal elongation will be used (the second crossover).
 # The function assumes summary data (produced by e.g. generateSummaryGraph()) for each layout algorithm
@@ -675,7 +674,7 @@ def generateFieldSizeCrossoverTable(fieldSizes:list, siteArea:int, layoutAlgorit
     f.flush();
 
     plotSummaryCrossoverTable(fileStem, layoutAlgorithms, 9, 4, "field size", 0.2, vertical);
-
+ 
 
 # Generates graph for success of various layout algorithms for a single number of holes (numHoles),
 # versus log of treasure elongation ratio.
@@ -685,6 +684,7 @@ def generateFieldSizeCrossoverTable(fieldSizes:list, siteArea:int, layoutAlgorit
 # before calling this function.
 # If minFieldName is specified, it is the layout algorithm for which the minimum success rate
 # is the minimum y axis value.
+# This graph was not used in the paper.
 def generateSpecificNumberOfHolesGraph(fieldSize:int, siteArea:int, heights:list, numHoles:int, dir:str = specificHolesDirectory, minFieldName:str = None) -> None:
     layoutAlgorithms = ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"];
 
@@ -1091,6 +1091,7 @@ def generateLargeRatioData(fieldSize:int, siteArea:int, height:list) -> None:
 # Heights are generated for both horinzontally and vertically elongated treasure (starting with vertical).
 # The maximum elongation ratio is ratioEnd.
 # While the log of the ratio is less than one, more data points are generated.
+# Heights are rounded to 2 decimal places.
 def generateHeights(siteArea:int, ratioEnd=40) -> list:
     heights = [];
     smallHeights = [];

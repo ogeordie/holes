@@ -635,7 +635,7 @@ def plotSummaryExperiment(csvDataFileName:str, squareSize:float, siteArea:int, f
     logRatios = [];
     for row in lines:
         ratio = float(row["ratio"]);
-        if (ratio < 1):
+        if (ratio < 0):
             logRatios.append(-math.log(-ratio, 10));
         else:
             logRatios.append(math.log(ratio, 10));
@@ -695,15 +695,16 @@ def plotSummaryExperiment(csvDataFileName:str, squareSize:float, siteArea:int, f
     interval = logRatios[len(logRatios) - 1] / 3;
     verticalXTicks = np.arange(logRatios[0], logRatios[i-1], interval);
     horizontalXTicks = np.arange(interval, logRatios[len(logRatios) - 1] + interval, interval);
+    # add the central point, which in all experiments is very close to log(1) = 0
     verticalXTicks = np.append(verticalXTicks, [0]);
     xticks = np.concatenate((verticalXTicks, horizontalXTicks));
     ax1.set_xticks(xticks);
     xTickLabels = [];
     for i in range(len(xticks)):
         if i == 0:
-            xTickLabels.append("-log(" + str(round(10**-xticks[i])) + ")")
+            xTickLabels.append("-log(" + str(round(10**-xticks[i], 1)) + ")");
         elif i == len(xticks) - 1:
-            xTickLabels.append("log(" + str(round(10**xticks[i])) + ")")
+            xTickLabels.append("log(" + str(round(10**xticks[i], 1)) + ")");
         elif xticks[i] < 0:
             xTickLabels.append("-log(" + str(round(10**-xticks[i], 1)) + ")");
         else:
