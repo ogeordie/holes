@@ -156,7 +156,9 @@ def runElongatedHexLike(fieldSize : int, treasureWidth:float, treasureHeight:flo
         experiment.mStartHoles = startHoles;
     if addToFileName != "":
         addToFileName = " " + addToFileName;
-    experiment.mOutputFileName = dir + "/" + str(treasureWidth) + "x" + str(treasureHeight) + "rectangle hexlike fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName +  ".csv";
+    twidth = round(treasureWidth, 2);
+    theight = round(treasureHeight, 2);
+    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle hexlike fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName +  ".csv";
     runner = ExperimentRunner(experiment);
     if printExperimentHoles != None:
         runner.printExperiment(printExperimentHoles);
@@ -172,7 +174,9 @@ def runElongatedHex(fieldSize : int, treasureWidth:float, treasureHeight:float, 
     experiment.mNumRepeats = numRepeats;
     if addToFileName != "":
         addToFileName = " " + addToFileName;
-    experiment.mOutputFileName = dir + "/" + str(treasureWidth) + "x" + str(treasureHeight) + "rectangle hex fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
+    twidth = round(treasureWidth, 2);
+    theight = round(treasureHeight, 2);
+    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle hex fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
     runner = ExperimentRunner(experiment);
     if printExperimentHoles != None:
         runner.printExperiment(printExperimentHoles);
@@ -196,7 +200,9 @@ def runElongatedStaggerXY(fieldSize: int, treasureWidth:float, treasureHeight:fl
         experiment.mStartHoles = startHoles;
     if addToFileName != "":
         addToFileName = " " + addToFileName;
-    experiment.mOutputFileName = dir + "/" + str(treasureWidth) + "x" + str(treasureHeight) + "rectangle staggerXY fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
+    twidth = round(treasureWidth, 2);
+    theight = round(treasureHeight, 2);
+    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle staggerXY fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
     runner = ExperimentRunner(experiment);
     if printExperimentHoles != None:
         runner.printExperiment(printExperimentHoles);
@@ -222,7 +228,9 @@ def runElongatedHalton(fieldSize: int, treasureWidth:float, treasureHeight:float
         experiment.mStartHoles = startHoles;
     if addToFileName != "":
         addToFileName = " " + addToFileName;
-    experiment.mOutputFileName = dir + "/" + str(treasureWidth) + "x" + str(treasureHeight) + "rectangle halton fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
+    twidth = round(treasureWidth, 2);
+    theight = round(treasureHeight, 2);
+    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle halton fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
     runner = ExperimentRunner(experiment);
     if printExperimentHoles != None:
         runner.printExperiment(printExperimentHoles);
@@ -248,7 +256,9 @@ def runElongatedRandom(fieldSize: int, treasureWidth:float, treasureHeight:float
         experiment.mStartHoles = startHoles;
     if addToFileName != "":
         addToFileName = " " + addToFileName;
-    experiment.mOutputFileName = dir + "/" + str(treasureWidth) + "x" + str(treasureHeight) + "rectangle random fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
+    twidth = round(treasureWidth, 2);
+    theight = round(treasureHeight, 2);
+    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle random fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
     runner = ExperimentRunner(experiment);
     if printExperimentHoles != None:
         runner.printExperiment(printExperimentHoles);
@@ -279,7 +289,9 @@ def runRandomisedStaggerXY(fieldSize:int, treasureWidth:float, treasureHeight:fl
     experiment.mStdDeviationDivisor = stdDevFactor;
     if addToFileName != "":
         addToFileName = " " + addToFileName;
-    experiment.mOutputFileName = dir + "/" + str(treasureWidth) + "x" + str(treasureHeight) + "rectangle randomisedStaggerXY sd" + str(stdDevFactor) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
+    twidth = round(treasureWidth, 2);
+    theight = round(treasureHeight, 2);
+    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle randomisedStaggerXY sd" + str(stdDevFactor) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
     runner = ExperimentRunner(experiment);
     if printExperimentHoles != None:
         runner.printExperiment(printExperimentHoles);
@@ -488,8 +500,9 @@ def generateSummaryGraph(fieldSize:int, siteArea:int, heights:list, showGraph:bo
         f.write("ratio, hexlike, staggerXY, randomisedStaggerXY8, halton, random\n");
 
         for h in heights:
+            height = round(h, 2);
             width = round(siteArea / h, 2);
-            fileStart = dir + "/" + str(width) + "x" + str(h) + "rectangle";
+            fileStart = dir + "/" + str(width) + "x" + str(height) + "rectangle";
             fileEnd = "fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
 
             successHexLike = areaUnderCurve(fileStart + " hexlike " + fileEnd, maximumHoles, suppressWarning =suppressNumHoleWarning)/maximumHoles;
@@ -498,7 +511,7 @@ def generateSummaryGraph(fieldSize:int, siteArea:int, heights:list, showGraph:bo
             successRandom = areaUnderCurve(fileStart + " random " + fileEnd, maximumHoles, suppressWarning =suppressNumHoleWarning)/maximumHoles;
             successRandomisedStaggerXY8 = areaUnderCurve(fileStart + " randomisedStaggerXY sd8 " + fileEnd, maximumHoles, suppressWarning =suppressNumHoleWarning)/maximumHoles;
 
-            if (h >= squareLength):
+            if (round(h, 2) >= squareLength):
                 w = siteArea / h;
                 ratio = -h / w;
             else :
@@ -567,15 +580,16 @@ def generateSummaryGraphLargeRatio(fieldSize:int, siteArea:int, heights:list, sh
     f.write("ratio, randomisedStaggerXY, halton, random\n");
 
     for h in heights:
+        height = round(h, 2);
         width = round(siteArea / h, 2);
-        fileStart = largeRatioDirectory + "/" + str(width) + "x" + str(h) + "rectangle";
+        fileStart = largeRatioDirectory + "/" + str(width) + "x" + str(height) + "rectangle";
         fileEnd = "fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
         successHalton = areaUnderCurve(fileStart + " halton " + fileEnd, maximumHoles=maxHoles)/maxHoles;
         successRandom = areaUnderCurve(fileStart + " random " + fileEnd, maximumHoles=maxHoles)/maxHoles;
         successRandomisedStaggerXY8 = areaUnderCurve(fileStart + " randomisedStaggerXY sd8 " + fileEnd, maximumHoles=maxHoles)/maxHoles;
         
         squareLength = round(math.sqrt(siteArea), 2);
-        if (h >= squareLength):
+        if (round(h, 2) >= squareLength):
             w = siteArea / h;
             ratio = -h/w;
         else :
@@ -901,15 +915,15 @@ def generateSummaryData(fieldSize:int, siteArea:int, height:list, dir:str = summ
         with Progress(*progress_columns) as progress2:
             task = progress2.add_task("generating height = " + str(h) + " site area = " + str(siteArea) + " field size = " + str(fieldSize), total=10100, start=False);
 
-            a = MyProcess(runElongatedHalton, fieldSize, round(siteArea/h, 2), h, siteArea, dir=dir);
+            a = MyProcess(runElongatedHalton, fieldSize, siteArea/h, h, siteArea, dir=dir);
             a.start();
-            b = MyProcess(runElongatedRandom, fieldSize, round(siteArea/h, 2), h, siteArea, dir=dir);
+            b = MyProcess(runElongatedRandom, fieldSize, siteArea/h, h, siteArea, dir=dir);
             b.start();
-            c = MyProcess(runElongatedHexLike, fieldSize, round(siteArea/h, 2), h, siteArea, dir=dir);
+            c = MyProcess(runElongatedHexLike, fieldSize, siteArea/h, h, siteArea, dir=dir);
             c.start();
-            d = MyProcess(runElongatedStaggerXY, fieldSize, round(siteArea/h, 2), h, siteArea, dir=dir);
+            d = MyProcess(runElongatedStaggerXY, fieldSize, siteArea/h, h, siteArea, dir=dir);
             d.start();
-            e = MyProcess(runRandomisedStaggerXY, fieldSize, round(siteArea/h, 2), h, 8, siteArea, dir=dir);
+            e = MyProcess(runRandomisedStaggerXY, fieldSize, siteArea/h, h, 8, siteArea, dir=dir);
             e.start();
 
             a.join();
@@ -938,15 +952,15 @@ def generateSpecificNumberOfHolesData(fieldSize:int, siteArea:int, height:list, 
 
             startHoles = numHoles - 15;
             stopHoles = numHoles + 15;
-            a = MyProcess(runElongatedRandom, fieldSize, round(siteArea/h, 2), h, siteArea, numRepeats=globalHighNumRepeats, numHoles=numHoles, dir=dir, addToFileName = "holes" + str(numHoles));
+            a = MyProcess(runElongatedRandom, fieldSize, siteArea/h, h, siteArea, numRepeats=globalHighNumRepeats, numHoles=numHoles, dir=dir, addToFileName = "holes" + str(numHoles));
             a.start();
-            b = MyProcess(runElongatedHalton, fieldSize, round(siteArea/h, 2), h, siteArea, numRepeats=globalHighNumRepeats, numHoles=numHoles, dir=dir, addToFileName = "holes" + str(numHoles));
+            b = MyProcess(runElongatedHalton, fieldSize, siteArea/h, h, siteArea, numRepeats=globalHighNumRepeats, numHoles=numHoles, dir=dir, addToFileName = "holes" + str(numHoles));
             b.start();
-            c = MyProcess(runElongatedHexLike, fieldSize, round(siteArea/h, 2), h, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
+            c = MyProcess(runElongatedHexLike, fieldSize, siteArea/h, h, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
             c.start();
-            d = MyProcess(runElongatedStaggerXY, fieldSize, round(siteArea/h, 2), h, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
+            d = MyProcess(runElongatedStaggerXY, fieldSize, siteArea/h, h, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
             d.start();
-            e = MyProcess(runRandomisedStaggerXY, fieldSize, round(siteArea/h, 2), h, 8, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
+            e = MyProcess(runRandomisedStaggerXY, fieldSize, siteArea/h, h, 8, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
             e.start();
 
             a.join();
@@ -1072,11 +1086,11 @@ def generateLargeRatioData(fieldSize:int, siteArea:int, height:list) -> None:
         with Progress(*progress_columns) as progress:    
             task = progress.add_task("generating height = " + str(h) + " site area = " + str(siteArea), total=10100, start=False);
 
-            a = MyProcess(runElongatedRandom, fieldSize, round(siteArea/h, 2), h, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats);
+            a = MyProcess(runElongatedRandom, fieldSize, siteArea/h, h, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats);
             a.start();
-            b = MyProcess(runElongatedHalton, fieldSize, round(siteArea/h, 2), h, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats)
+            b = MyProcess(runElongatedHalton, fieldSize, siteArea/h, h, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats)
             b.start();
-            c = MyProcess(runRandomisedStaggerXY, fieldSize, round(siteArea/h, 2), h, 8, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats);
+            c = MyProcess(runRandomisedStaggerXY, fieldSize, siteArea/h, h, 8, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats);
             c.start();
 
             a.join();
@@ -1088,32 +1102,29 @@ def generateLargeRatioData(fieldSize:int, siteArea:int, height:list) -> None:
 
 
 # Generates treasure heights for the given siteArea, over a range of elongation ratios.
-# Heights are generated for both horinzontally and vertically elongated treasure (starting with vertical).
+# Heights are generated for both horizontally and vertically elongated treasure (starting with vertical).
 # The maximum elongation ratio is ratioEnd.
-# While the log of the ratio is less than one, more data points are generated.
-# Heights are rounded to 2 decimal places.
-def generateHeights(siteArea:int, ratioEnd=40) -> list:
+# While the log of the ratio is less than one, the log is incremented by lowRatioInterval.
+# After that it is incremented by highRatioInterval.
+def generateHeightsIntervals(siteArea:int, ratioEnd=40, lowRatioInterval = 0.1, highRatioInterval = 0.2) -> list:
     heights = [];
     smallHeights = [];
-    skip = True;
-    intEnd = round(math.log(ratioEnd, 10) * 10);
-    for m in range(0, intEnd+1):
-        if m == intEnd:
-            ratioToOne=ratioEnd;
+    end = math.log(ratioEnd, 10);
+    logratio = 0;
+    while logratio < end:
+        ratioToOne = 10**logratio;
+        heights.append(math.sqrt(ratioToOne * siteArea));
+        if logratio < 1:
+            logratio += lowRatioInterval;
         else:
-            l = m/10;
-            ratioToOne = 10**l;
-            if l >= 1:
-                if (skip):
-                    skip = False;
-                    continue;
-                skip = True;
-        
-        heights.append(round(math.sqrt(ratioToOne * siteArea), 2));
+            logratio += highRatioInterval;
+    ratioToOne = ratioEnd;
+    heights.append(math.sqrt(ratioToOne * siteArea));
     heights.reverse();
     for m in range(len(heights) - 2, -1, -1):
-        smallHeights.append(round(siteArea/heights[m], 2));
-    return heights + smallHeights;
+        smallHeights.append(siteArea/heights[m]);
+    allHeights = heights + smallHeights;
+    return allHeights
 
 
 # GO DATA FUNCTIONS
@@ -1131,12 +1142,12 @@ def goSummaryData():
     
     for fieldSize in [100]:
         for siteArea in [20, 100, 200]:
-            generateSummaryData(fieldSize, siteArea, generateHeights(siteArea));
+            generateSummaryData(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15));
             current_datetime = datetime.now();
             print(current_datetime);
     for fieldSize in [150, 200]:
         for siteArea in [100]:
-            generateSummaryData(fieldSize, siteArea, generateHeights(siteArea));
+            generateSummaryData(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15));
             current_datetime = datetime.now();
             print(current_datetime);
 
@@ -1145,7 +1156,7 @@ def goLargeRatioData():
     print("GENERATING LARGE RATIO DATA");
     current_datetime = datetime.now();
     print(current_datetime);
-    generateLargeRatioData(100, 20, generateHeights(20, 500));
+    generateLargeRatioData(100, 20, generateHeightsIntervals(20, 500, 0.1, 0.2));
     current_datetime = datetime.now();
     print(current_datetime);
 
@@ -1157,7 +1168,7 @@ def goSpecificNumberOfHolesData():
     for fieldSize in [100]:
         for siteArea in [20, 100, 200]:
             for holes in [25, 48, 99]:
-                generateSpecificNumberOfHolesData(fieldSize, siteArea, generateHeights(siteArea), holes, specificHolesDirectory);
+                generateSpecificNumberOfHolesData(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), holes, specificHolesDirectory);
                 current_datetime = datetime.now();
                 print(current_datetime);
 
@@ -1201,12 +1212,12 @@ def goSummaryGraphs():
                 minY = 98.5;
             elif siteArea == 200:
                 minY = 99.1;
-            generateSummaryGraph(fieldSize, siteArea, generateHeights(siteArea), maximumHoles=6000, minFieldName="random", zoomCentral=True, showGraph=False, minY = minY);
-    generateSummaryGraph(fieldSize, 100, generateHeights(100), maximumHoles=6000, minFieldName="random", zoomCentral=False, showGraph=False);
+            generateSummaryGraph(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), maximumHoles=6000, minFieldName="random", zoomCentral=True, showGraph=False, minY = minY);
+    generateSummaryGraph(fieldSize, 100, generateHeightsIntervals(100, 40, 0.1, 0.15), maximumHoles=6000, minFieldName="random", zoomCentral=False, showGraph=False);
     # generate summary data for other field sizes, used in the crossover analysis. saveGraph is False.
-    generateSummaryGraph(100, 100, generateHeights(100), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
-    generateSummaryGraph(150, 100, generateHeights(100), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
-    generateSummaryGraph(200, 100, generateHeights(100), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
+    generateSummaryGraph(100, 100, generateHeightsIntervals(100, 40, 0.1, 0.15), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
+    generateSummaryGraph(150, 100, generateHeightsIntervals(100, 40, 0.1, 0.15), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
+    generateSummaryGraph(200, 100, generateHeightsIntervals(100, 40, 0.1, 0.15), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
 
 # note: summary graphs must be generated before calling this function
 def goCrossoverTables():
@@ -1219,7 +1230,7 @@ def goCrossoverTables():
 
 def goLargeRatioGraphs():
     print("generating large ratio graphs...");
-    generateSummaryGraphLargeRatio(100, 20, generateHeights(20, 500), False);
+    generateSummaryGraphLargeRatio(100, 20, generateHeightsIntervals(20, 500, 0.1, 0.2), False);
 
 def goSmallNumberOfHolesGraphs():
     print("generating small number of holes graph...");
@@ -1229,14 +1240,14 @@ def goSmallNumberOfHolesGraphs():
             minY = 14;
         elif siteArea == 200:
             minY = 26;
-        generateSummaryGraph(100, siteArea, generateHeights(siteArea), zoomCentral=True, minFieldName="random", maximumHoles=25, dir = summaryDirectory, outputDir = smallHolesDirectory, compileData=True, showGraph = False, suppressNumHoleWarning=True, minY = minY);
+        generateSummaryGraph(100, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), zoomCentral=True, minFieldName="random", maximumHoles=25, dir = summaryDirectory, outputDir = smallHolesDirectory, compileData=True, showGraph = False, suppressNumHoleWarning=True, minY = minY);
 
 def goSpecificNumberOfHolesGraphs():
     print("generating specific number of holes graphs,,,");
     for fieldSize in [100]:
         for siteArea in [20, 100, 200]:
             for holes in [25, 48, 99]:
-                generateSpecificNumberOfHolesGraph(fieldSize, siteArea, generateHeights(siteArea), holes, specificHolesDirectory);
+                generateSpecificNumberOfHolesGraph(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), holes, specificHolesDirectory);
 
 def goRealWorldGraphs():
     print("generating real world polygon graphs...");
@@ -1312,9 +1323,9 @@ if __name__ == '__main__':
         goCrossoverTables();
         goLargeRatioGraphs();
         goSmallNumberOfHolesGraphs();
-        #goSpecificNumberOfHolesGraphs();
+        # goSpecificNumberOfHolesGraphs();
         goRealWorldGraphs();
-        #goCostGraphs();
+        # goCostGraphs();
         goSpecificRatioHolesForSuccessRatesTables();
         goRealWorldHolesForSuccessRatesTables();
         goMaximumDifferenceInSuccessTable();
