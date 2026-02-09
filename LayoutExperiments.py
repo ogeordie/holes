@@ -1131,7 +1131,7 @@ def generateHeightsIntervals(siteArea:int, ratioEnd=40, lowRatioInterval = 0.1, 
 # These functions perform all experiments for the various analyses used in the paper.
 # The corresponding generate...Data() functions are called.
 # Some take a long time, so if running all these functions leave it running overnight.
-# It takes around 42 hours to run all of these on a fast computer.
+# It takes around 40 hours to run all of these on a fast computer.
 # It could take days on an older or slower computer.
 
 # this takes 22 hours on a fast computer
@@ -1173,7 +1173,7 @@ def goSpecificNumberOfHolesData():
                 current_datetime = datetime.now();
                 print(current_datetime);
 
-# this takes 40 minutes on a fast computer
+# this takes 30 minutes on a fast computer
 def goSpecificRatioData():
     print("GENERATING SPECIFIC RATIO DATA");
     current_datetime = datetime.now();
@@ -1182,7 +1182,7 @@ def goSpecificRatioData():
     current_datetime = datetime.now();
     print(current_datetime);
 
-# this takes 45 minutes on a fast computer
+# this takes 40 minutes on a fast computer
 def goRealWorldData():
     print("GENERATING REAL WORLD DATA");
     current_datetime = datetime.now();
@@ -1282,16 +1282,16 @@ if __name__ == '__main__':
     # go variables
     # Set these to True to run the experiments in the given category and generate data.
     # Some "go" data functions take a very long time. If setting all to True
-    # be prepared to wait over 42 hours on a fast computer.
+    # be prepared to wait over 40 hours on a fast computer.
     # It could take days on an older or slower computer.
     
-    # this takes 40 minutes on a fast computer:
+    # this takes 30 minutes on a fast computer:
     goSpecificRatio = False;
     # this takes 22 hours on a fast computer:
     goSummary = False;
     # this takes 16 hours on a fast computer:
     goLargeRatio = False;
-    # this takes 45 minutes on a fast computer:
+    # this takes 40 minutes on a fast computer:
     goRealWorld = False;
 
     goGraphsAndTables = True;
@@ -1301,19 +1301,19 @@ if __name__ == '__main__':
     if not(goSpecificRatio or goSummary or goLargeRatio or goRealWorld):
         print("USING PRE-GENERATED DATA.");
         print("To generate your own data set the appropriate \"go\" variables to True in LayoutExperiments.py.");
-        print("Generating all data will take over 42 hours on a fast computer.")
+        print("Generating all data may take over 40 hours on a fast computer.")
         print("It could take days on an older or slower computer.");
         print();
     
     runtime = 0;
     if goSpecificRatio:
-        runtime += 40/60;
+        runtime += 30/60;
     if goSummary:
         runtime += 22;
     if goLargeRatio:
         runtime += 16;
     if goRealWorld:
-        runtime += 45/60
+        runtime += 40/60
 
     if goSpecificRatio or goSummary or goLargeRatio or goRealWorld:
         print("GENERATING DATA");
