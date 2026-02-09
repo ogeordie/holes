@@ -798,6 +798,9 @@ def getLogRatioAndSuccess(csvFileName:str, numHoles:int, siteArea:int, treasureH
     for row in lines:
         holes.append(int(row["actualholes"]));
         successes.append(float(row["successrate"]));
+    if successes[len(successes) - 1] != 100:
+        if holes[0] > numHoles or holes[len(holes) - 1] < numHoles:
+            print("error: data don't cover specific number of holes");
     success = interpolateHoles(numHoles, holes, successes);
     if treasureHeight > width:
         return -math.log(treasureHeight/width, 10), success;

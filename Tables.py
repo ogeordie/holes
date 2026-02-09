@@ -235,14 +235,13 @@ def breakEvenRatios(smallHolesFileName:str, bigHolesFileName:str) -> tuple[float
 
 # Interpolates values for success based on the given desired number of holes (hole).
 # Data for number of holes and their respective success rates are given by
-# the two lists.
+# the two lists. If we run out of holes a success of 100 is returned.
 def interpolateHoles(hole:int, holes:list, success:list) -> float:
     holeIndex = 0;
     while (holes[holeIndex] < hole):
         holeIndex = holeIndex + 1;
         if holeIndex >= len(holes):
             return 100;
-            #return 0;
     if holes[holeIndex] == hole:
         return success[holeIndex];
     if holeIndex == 0:
@@ -339,7 +338,14 @@ def getMaximumDifferenceInSuccessLayout(fieldSize:int, siteArea:int, layoutAlgor
     
     if maxHoles == None and (successes1[len(holes1) - 1] != 100 or successes2[len(holes2) - 1] != 100):
         print("error: data don't go to 100% success rate");
-        exit()
+        exit();
+    
+    if maxHoles != None and \
+    (   (holes1[len(holes1) - 1] < maxHoles and successes1[len(holes1) - 1] != 100)  or \
+        (holes2[len(holes2) - 1] < maxHoles and successes2[len(holes2) - 1] != 100)
+    ):
+        print("error: data don't reach maxHoles");
+        exit();
 
     maximum = 0;
     for hole in range(holeLimit + 1):

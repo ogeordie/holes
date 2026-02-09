@@ -653,7 +653,7 @@ class PolygonTreasure():
             pointY = self.__normalisedPoints[p][1] + self.topLeftY;
             points.append((pointX, pointY));
         self.mPolygon = Polygon(points);
-   
+
     # returns True iff hole intersects this polygon
     def intersects(self, hole:Hole) -> bool:
         holeLeft = hole.centreX - hole.width / 2;

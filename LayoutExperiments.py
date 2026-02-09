@@ -698,7 +698,7 @@ def generateFieldSizeCrossoverTable(fieldSizes:list, siteArea:int, layoutAlgorit
 # before calling this function.
 # If minFieldName is specified, it is the layout algorithm for which the minimum success rate
 # is the minimum y axis value.
-# This graph was not used in the paper.
+# This graph was not used in the paper and still needs testing.
 def generateSpecificNumberOfHolesGraph(fieldSize:int, siteArea:int, heights:list, numHoles:int, dir:str = specificHolesDirectory, minFieldName:str = None) -> None:
     layoutAlgorithms = ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"];
 
@@ -824,7 +824,7 @@ def generatePolygonHolesForSuccessRatesTables(fieldSize:int, rotate:bool = False
 # Site area and field size are constant (both 100).
 def generateMaximumDifferenceInSuccessTable():
     data = [];
-    data.append(["Elongation", "Maximum Difference\nAcross All Pit Numbers\n(percentage points)", "Maximum Difference\nAcross First 25 Pits\n(percentage points)"]);
+    data.append(["Elongation", "Maximum Difference\nfor All Numbers of Pits\n(percentage points)", "Maximum Difference\nfor 1-25 Pits\n(percentage points)"]);
 
     for ratio in [1, 5, 20]:
         for vertical in [True, False]:
@@ -868,7 +868,7 @@ def generateMaximumDifferenceInSuccessTable():
             data[len(data) - 1].append(round(max, 2));
             data[len(data) - 1].append(round(max25, 2));
 
-    plotTable(data, 6, 4, 2, 3.2, drillDownDirectory + "/maximum differences in success siteArea 100.png", cellHeight=0.04, title="Maximum Difference in Success Rates\nAcross All Layout Algorithms\nField Size 100m x 100m, Site Area 100m\u00b2");
+    plotTable(data, 6, 5, 2, 3.2, drillDownDirectory + "/maximum differences in success siteArea 100.png", cellHeight=0.04, title="Maximum Difference in Success Rates\nAcross All Layout Algorithms\nFor Any Given Number of Pits\nField Size 100m x 100m, Site Area 100m\u00b2");
 
 
 # A class that runs a function in a new process. Multiprocessing is
@@ -940,7 +940,7 @@ def generateSummaryData(fieldSize:int, siteArea:int, height:list, dir:str = summ
 # Experiments are run for the given fieldSize and siteArea and treasure heights in height.
 # Data is stored in the dir subdirectory of the data directory, in the filenames specified in
 # the comments for the run...() functions.
-# This was not used in the paper.
+# This was not used in the paper and still needs testing.
 def generateSpecificNumberOfHolesData(fieldSize:int, siteArea:int, height:list, numHoles:int = 30, dir:str = specificHolesDirectory):
     progress_columns = (
         "[progress.description]{task.description}",
@@ -1161,6 +1161,7 @@ def goLargeRatioData():
     print(current_datetime);
 
 # this takes 55 minutes on a fast computer
+# this was not used in the paper and still needs testing
 def goSpecificNumberOfHolesData():
     print("GENERATING SPECIFIC NUMBER OF HOLES DATA");
     current_datetime = datetime.now();
@@ -1242,6 +1243,7 @@ def goSmallNumberOfHolesGraphs():
             minY = 26;
         generateSummaryGraph(100, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), zoomCentral=True, minFieldName="random", maximumHoles=25, dir = summaryDirectory, outputDir = smallHolesDirectory, compileData=True, showGraph = False, suppressNumHoleWarning=True, minY = minY);
 
+# this is not used in the paper and still needs testing
 def goSpecificNumberOfHolesGraphs():
     print("generating specific number of holes graphs,,,");
     for fieldSize in [100]:
@@ -1289,9 +1291,6 @@ if __name__ == '__main__':
     goSummary = False;
     # this takes 17 hours and 40 minutes on a fast computer:
     goLargeRatio = False;
-    # this takes 55 minutes on a fast computer.
-    # NOTE: it is not used in either paper, so can remain False:
-    goSpecificNumberOfHoles = False;
     # this takes 45 minutes on a fast computer:
     goRealWorld = False;
 
@@ -1299,8 +1298,8 @@ if __name__ == '__main__':
 
     goPrintExperiments = False;
 
-    if not(goSpecificRatio or goSummary or goLargeRatio or goSpecificNumberOfHoles or goRealWorld):
-        print("Using pre-generated data.");
+    if not(goSpecificRatio or goSummary or goLargeRatio or goRealWorld):
+        print("USING PRE-GENERATED DATA.");
         print("To generate your own data set the appropriate \"go\" variables to True in LayoutExperiments.py.");
         print("Generating all data will take over 42 hours on a fast computer.")
         print("It could take days on an older or slower computer.");
@@ -1312,8 +1311,6 @@ if __name__ == '__main__':
         goSummaryData();
     if goLargeRatio:
         goLargeRatioData();
-    if goSpecificNumberOfHoles:
-        goSpecificNumberOfHolesData();
     if goRealWorld:
         goRealWorldData();
 
@@ -1323,7 +1320,6 @@ if __name__ == '__main__':
         goCrossoverTables();
         goLargeRatioGraphs();
         goSmallNumberOfHolesGraphs();
-        # goSpecificNumberOfHolesGraphs();
         goRealWorldGraphs();
         # goCostGraphs();
         goSpecificRatioHolesForSuccessRatesTables();

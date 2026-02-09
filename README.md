@@ -97,9 +97,9 @@ if result[0]:
     successes = successes + 1
 actualNumberOfHoles = result[1]
 ```
-Then after the many iterations, the output is `<number of holes>`,
+Then after the many iterations, the output is `number of holes`,
 `actualNumberOfHoles`, and `successes * 100 / <number of iterations>` which is the
-success rate. (We assume `actualNumberOfHoles` will be the same when `<number of holes>`
+success rate. (We assume `actualNumberOfHoles` will be the same when `number of holes`
 is the same). The output is saved to the file specified in the `Experiment` subclass.
 
 The code defines the top left of the field as the origin (0,0).
@@ -566,8 +566,8 @@ See the paper and `generateCrossoverTableAndGraph()` in `LayoutExperiment.py`
 for more information on crossover points. `goCrossoverTables()` generates the tables
 in the `graphs/summary` directory.
 
-**3** is `vertical crossover siteArea100 table.png` (and `.csv`)   
-**4** is `horizontal crossover siteArea100 table.png` (and `.csv`)   
+**3** is `horizontal crossover siteArea100 table.png` (and `.csv`)   
+**4** is `vertical crossover siteArea100 table.png` (and `.csv`)   
 **5** is `horizontal crossover fieldsize100 table.png` (and `.csv`)   
 **6** is `vertical crossover fieldsize100 table.png` (and `.csv`)
 
