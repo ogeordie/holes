@@ -342,7 +342,7 @@ def getMaximumDifferenceInSuccessLayout(fieldSize:int, siteArea:int, layoutAlgor
     
     if maxHoles != None and \
     (   (holes1[len(holes1) - 1] < maxHoles and successes1[len(holes1) - 1] != 100)  or \
-        (holes2[len(holes2) - 1] < maxHoles and successes2[len(holes2) - 1] != 100)
+        (holes2[len(holes2) - 1] < maxHoles and successes2[len(holes2) - 1] != 100) \
     ):
         print("error: data don't reach maxHoles");
         exit();

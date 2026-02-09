@@ -82,7 +82,8 @@
 # by calling `ExperimentRunner.printExperiment()` (which can also be triggered from
 # `Experiments.py` and `LayoutExperiments.py` by setting `goPrintExperiments` to `True`).
 # The file `CreateFieldImage.py` contains code to read such a text file and produce a
-# graphical representation of the field, useful in debugging.
+# graphical representation of the field, useful in debugging. Printed experiments are saved
+# to `hpf` files (for Holes Printed Field).
 
 # The inner simulation procedure (called thousands of times for each number of holes) is simplified
 # as (for example):
@@ -1718,7 +1719,7 @@ class ExperimentRunner:
             filename = "intersectField " + str(self.fieldSize) + " holesize " + str(self.holeSize) + " treasure " + str(self.treasureWidth) + "x" + str(self.treasureHeight) + " holes " + str(holesDug) + " " + playerType;
         else:
             filename = "polygonField " + str(self.fieldSize) + " holesize " + str(self.holeSize) + " holes " + str(holesDug) + " " + polygonOrientationString + playerType;
-        filename = "printedFields/" + filename;
+        filename = "printedFields/" + filename + ".hpf";
         outputFile = Path(filename);
         outputFile.parent.mkdir(exist_ok=True, parents=True);
         # print the field   

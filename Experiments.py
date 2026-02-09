@@ -497,7 +497,7 @@ if __name__ == "__main__":
     if goData:
         generateData();
     else:
-        print("Using pre-generated data.");
+        print("USING PRE-GENERATED DATA.");
         print("If you wish to generate your own data, set \"goData\" to True in Experiments.py.");
         print("It may take over 1 hour and 15 minutes on a fast computer.\n");
     

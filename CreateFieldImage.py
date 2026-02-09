@@ -59,13 +59,14 @@ from kivy.uix.label import Label, CoreLabel
 from kivy.utils import get_color_from_hex
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.relativelayout import RelativeLayout
+import os
 
 # set file name:  change this to refer to the file with field data you want
 # to display. Leave the printedFields directory in the file name.
 # The Image will be saved as "printedFields/<filename>.png".
 filename = "printedFields/\
 intersectField 100 holesize 0.5 treasure 10x10 holes 42 HexagonalLike\
-"
+.hpf"
 
 # A kivy Widget that draws the holes and treasure defined in filename (above)
 # on the canvas.
@@ -250,7 +251,8 @@ class FieldApp(App):
 
     # saves the graphical field as a png file
     def export(self):
-        self.widget.export_to_png(filename + '.png')
+        stem = os.path.splitext(filename)[0];
+        self.widget.export_to_png(stem + '.png')
 
 if __name__ == '__main__':
     app = FieldApp();

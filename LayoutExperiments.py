@@ -1134,7 +1134,7 @@ def generateHeightsIntervals(siteArea:int, ratioEnd=40, lowRatioInterval = 0.1, 
 # It takes around 42 hours to run all of these on a fast computer.
 # It could take days on an older or slower computer.
 
-# this takes 22 and 15 minutes on a fast computer
+# this takes 22 hours on a fast computer
 def goSummaryData():
     print("GENERATING SUMMARY DATA");
     current_datetime = datetime.now();
@@ -1151,7 +1151,7 @@ def goSummaryData():
             current_datetime = datetime.now();
             print(current_datetime);
 
-# this takes 17 hours and 40 minutes on a fast computer
+# this takes 16 hours on a fast computer
 def goLargeRatioData():
     print("GENERATING LARGE RATIO DATA");
     current_datetime = datetime.now();
@@ -1287,9 +1287,9 @@ if __name__ == '__main__':
     
     # this takes 40 minutes on a fast computer:
     goSpecificRatio = False;
-    # this takes 22 hours and 15 minutes on a fast computer:
+    # this takes 22 hours on a fast computer:
     goSummary = False;
-    # this takes 17 hours and 40 minutes on a fast computer:
+    # this takes 16 hours on a fast computer:
     goLargeRatio = False;
     # this takes 45 minutes on a fast computer:
     goRealWorld = False;
@@ -1303,6 +1303,21 @@ if __name__ == '__main__':
         print("To generate your own data set the appropriate \"go\" variables to True in LayoutExperiments.py.");
         print("Generating all data will take over 42 hours on a fast computer.")
         print("It could take days on an older or slower computer.");
+        print();
+    
+    runtime = 0;
+    if goSpecificRatio:
+        runtime += 40/60;
+    if goSummary:
+        runtime += 22;
+    if goLargeRatio:
+        runtime += 16;
+    if goRealWorld:
+        runtime += 45/60
+
+    if goSpecificRatio or goSummary or goLargeRatio or goRealWorld:
+        print("GENERATING DATA");
+        print("This will take " + str(round(runtime, 2)) + " hours on a fast computer");
         print();
 
     if goSpecificRatio:

@@ -83,7 +83,8 @@ There is also the functionality to save a field (with holes and treasure) to a t
 by calling `ExperimentRunner.printExperiment()` (which can also be triggered from
 `Experiments.py` and `LayoutExperiments.py` by setting `goPrintExperiments` to `True`).
 The file `CreateFieldImage.py` contains code to read such a text file and produce a
-graphical representation of the field, useful in debugging. See the "Files" section
+graphical representation of the field, useful in debugging. Printed experiments are saved
+to `hpf` files (for Holes Printed Field). See the "Files" section
 below for information on other files.
 
 The inner simulation procedure (called thousands of times for each number of holes) is simplified
@@ -233,7 +234,8 @@ have missed creating a virtual environment in step 4 above for the folder that's
 
     To create a graphical image of a field, you first print the field to the
     `printedFields` directory (e.g. by setting `goPrintExperiments` to `True` in `Experiments.py`
-    or `LayoutExperiments.py`). Example field files exist in the `printedFields` directory.
+    or `LayoutExperiments.py`). Printed fields are saved in `hpf` files. Example printed field
+    files for "Size Matters" and "Layout Matters" exist in the `printedFields` directory.
     Then paste the file name of the printed field file into `CreateFieldImage.py`
     (the `filename` variable is near the top), and run:
     ```
