@@ -1151,7 +1151,7 @@ def goSummaryData():
             current_datetime = datetime.now();
             print(current_datetime);
 
-# this takes 16 hours on a fast computer
+# this takes 15 hours on a fast computer
 def goLargeRatioData():
     print("GENERATING LARGE RATIO DATA");
     current_datetime = datetime.now();
@@ -1173,7 +1173,8 @@ def goSpecificNumberOfHolesData():
                 current_datetime = datetime.now();
                 print(current_datetime);
 
-# this takes 30 minutes on a fast computer
+# this takes 30 minutes on a fast computer.
+# Also known as "drilldown" experiments.
 def goSpecificRatioData():
     print("GENERATING SPECIFIC RATIO DATA");
     current_datetime = datetime.now();
@@ -1282,14 +1283,14 @@ if __name__ == '__main__':
     # go variables
     # Set these to True to run the experiments in the given category and generate data.
     # Some "go" data functions take a very long time. If setting all to True
-    # be prepared to wait over 40 hours on a fast computer.
+    # be prepared to wait around 40 hours on a fast computer.
     # It could take days on an older or slower computer.
     
-    # this takes 30 minutes on a fast computer:
+    # this takes 30 minutes on a fast computer. Also known as "drilldown" experiments:
     goSpecificRatio = False;
     # this takes 22 hours on a fast computer:
     goSummary = False;
-    # this takes 16 hours on a fast computer:
+    # this takes 15 hours on a fast computer:
     goLargeRatio = False;
     # this takes 40 minutes on a fast computer:
     goRealWorld = False;
@@ -1298,11 +1299,13 @@ if __name__ == '__main__':
 
     goPrintExperiments = False;
 
-    if not(goSpecificRatio or goSummary or goLargeRatio or goRealWorld):
+    if not(goSpecificRatio or goSummary or goLargeRatio or goRealWorld) and goGraphsAndTables:
         print("USING PRE-GENERATED DATA.");
         print("To generate your own data set the appropriate \"go\" variables to True in LayoutExperiments.py.");
-        print("Generating all data may take over 40 hours on a fast computer.")
-        print("It could take days on an older or slower computer.");
+        print("Generating all data may take over 40 hours on a fast computer,")
+        print("and could take days on an older or slower computer.");
+        print();
+        print("Generating graphs and tables will take under a minute on a fast computer.");
         print();
     
     runtime = 0;
@@ -1311,13 +1314,13 @@ if __name__ == '__main__':
     if goSummary:
         runtime += 22;
     if goLargeRatio:
-        runtime += 16;
+        runtime += 15;
     if goRealWorld:
         runtime += 40/60
 
     if goSpecificRatio or goSummary or goLargeRatio or goRealWorld:
         print("GENERATING DATA");
-        print("This will take " + str(round(runtime, 2)) + " hours on a fast computer");
+        print("This will take around " + str(round(runtime, 1)) + " hours on a fast computer");
         print();
 
     if goSpecificRatio:

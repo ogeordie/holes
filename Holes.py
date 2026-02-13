@@ -25,8 +25,8 @@
 # of a given size. The field has a randomly placed archaeological site (referred to as both
 # "treasure" and "site" in the code), either specified by a circle, rectangle, or polygon
 # (for intersection experiments), or by real-world data on artefact distribution from digs
-# in NSW Australia (for detection experiments in "Size Matters"). See the csv files in the
-# `real world data` directory for the real-world data and polygon `shapefile` definition.
+# in NSW Australia (for detection experiments in "Size Matters"). See the `real world data`
+# directory for the real-world data csv files and the polygon `shapefile` definition.
 
 # The pits are placed according to a layout algorithm. Layout algorithms are implemented by 
 # subclasses of the class `Player`. Calling `Player.play()` performs one archaeological dig 
@@ -210,6 +210,11 @@ class IntersectField(Field):
             yInBounds = y > self.__treasureCentreY - self.__treasureHeight/2 and y < self.__treasureCentreY + self.__treasureHeight/2;
             return xInBounds and yInBounds;
 
+    # implements the clamp function
+    def clamp(self, x, minimum, maximum):
+        retval = max(minimum, min(x, maximum));
+        return retval;
+
     # returns True iff hole intersects the treasure on the field. Assumes treasure has been placed.
     def __intersectsTreasure(self, hole:Hole) -> bool:
         if self.__rectangularTreasure == False:
@@ -218,10 +223,10 @@ class IntersectField(Field):
             holeT = hole.centreY - hole.height/2;
             holeB = hole.centreY + hole.height/2;
         
-            closestXToCircle = max(holeL, min(self.__treasureCentreX, holeR));
-            closestYToCircle = max(holeT, min(self.__treasureCentreY, holeB));
-        
-            distanceToClosestPoint = math.sqrt((self.__treasureCentreX - closestXToCircle)**2 + (self.__treasureCentreY - closestYToCircle) **2);
+            closestXToCircleClamp = self.clamp(self.__treasureCentreX, holeL, holeR);
+            closestYToCircleClamp = self.clamp(self.__treasureCentreY, holeT, holeB);
+
+            distanceToClosestPoint = math.sqrt((self.__treasureCentreX - closestXToCircleClamp)**2 + (self.__treasureCentreY - closestYToCircleClamp) **2);
         
             return distanceToClosestPoint < self.__treasureRadius;
     

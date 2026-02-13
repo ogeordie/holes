@@ -311,10 +311,10 @@ def runRealWorldExperiment(realWorldDataFileName:str, maxHoles:int, ouptutFileNa
 
 
 # generate all the data for all experiments, placing it in the data/sizematters directory
-# NOTE: this may take over an  and 15 minutes on a fast computer
+# NOTE: this may take over an hour and 30 minutes on a fast computer
 def generateData():
     print("GENERATING DATA IN THE data/sizematters DIRECTORY");
-    print("This may take over 1 hour and 15 minutes on a fast computer.");
+    print("This may take over 1 hour and 30 minutes on a fast computer.");
 
     progress_columns = (
         "[progress.description]{task.description}",
@@ -482,7 +482,7 @@ def generateGraphsAndTables():
 if __name__ == "__main__":
 
     # Set goData to True to generate your own data.
-    # It may take over 1 hour and 15 miutes on a fast computer.
+    # It may take over 1 hour and 30 miutes on a fast computer.
     goData = False;
     
     # Set to True to generate the graphs and tables
@@ -496,10 +496,10 @@ if __name__ == "__main__":
     
     if goData:
         generateData();
-    else:
+    elif goGraphsAndTables:
         print("USING PRE-GENERATED DATA.");
         print("If you wish to generate your own data, set \"goData\" to True in Experiments.py.");
-        print("It may take over 1 hour and 15 minutes on a fast computer.\n");
+        print("It may take over 1 hour and 30 minutes on a fast computer.\n");
     
     if goGraphsAndTables:
         generateGraphsAndTables();
