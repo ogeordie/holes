@@ -500,6 +500,7 @@ if __name__ == "__main__":
         print("USING PRE-GENERATED DATA.");
         print("If you wish to generate your own data, set \"goData\" to True in Experiments.py.");
         print("It may take over 1 hour and 30 minutes on a fast computer.\n");
+        print("Generating graphs and tables is quick.\n")
     
     if goGraphsAndTables:
         generateGraphsAndTables();

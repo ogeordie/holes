@@ -301,6 +301,7 @@ These are the files in the `holes` distribution:
 -   `requirements.txt`: the dependencies of the above python files, used during
     installation.
 -   `README.md`: this file, describing the software and how to install and use it.
+-   `LICENSE`: the GPL v3 license.
 -   `size matters and layout matters layout algorithms.pdf`: Description of the layout
     algorithms implemented in `Holes.py`.
 -   `real world data` folder: contains the data used in the detection experiments
