@@ -15,33 +15,39 @@
 # If not, see https://www.gnu.org/licenses/gpl-3.0.html.
 
 
-# This file is a utility that produces a graphical image of a Field with holes and treasure.
-# Files can be generated with Experiment.printExperiment() in Holes.py, which is also called
-# by the LayoutExperiments.py and Experiments.py when goPrintExperiments is set to True.
-# These files are stored in the printedFields directory, and the output image is alse
+# This file is a utility that produces a graphical image of a Field with holes and treasure
+# using the kivy library.
+# Files can be generated with ExperimentRunner.printExperiment() in ExperimentRunner.py,
+# which is also called by LayoutExperiments.py and SizeMattersExperiments.py when
+# goPrintExperiments is set to True. Such files generally have a hpf suffix.
+# These files are stored in the printedFields directory, and the generated image is also
 # saved to this directory.
 
-# To use, paste the file name in the filename variable at the top of the code in this file
-# (search "set file name").
+# To use, choose a mode at the top of the code in this file (search "set mode"). The mode can
+# either be allNewHPFFiles or onlyNamedFile. Uncomment the mode you want and comment out
+# the other one. The allNewHPFFiles mode will display and create .png files for every .hpf
+# file in the printedFields directory that doesn't have a corresponding .png file that is more
+# recent. The onlyNamedFile mode will only display and create a png file for the file named in
+# the filename variable. To use this second mode, paste the file name in the filename variable
+# just beneath the mode variable (search "set file name").
 
 # File format:
 # 
-# The first line is "intersect" or "realworld" (see Holes.py for more detail on these).
+# The first line is "field".
 # The second line is the field size: <x> <y>
 #
-# If first line is "intersect":
-#   the third line starts "circularTreasure:", "rectangularTreasure:", or "polygonTreasure:" followed
-#   by the treasure dimensions:
-#       <centreX> <centreY> <radius> for circular
-#       <centreX> <centreY> <width> <height> for rectangular
-#       <topLeftX> <topLeftY> <bottomRightX> <bottomRightY>
-#   and for polygonTreasure, one line for each defining point:
-#        point: <polygonPointX> <polygonPointY>
+# The third line is the treasure type, "rectangularTreasure", "polygonTreasure", "circularTreasure"
+# or "realworldTreasure"
 #
-# If first line is "realworld":
-#   the third line starts "realworldtreasure" followed by the bounding rectangle dimensions:
-#       <topLeftX> <topLeftY> <bottomRightX> <bottomRightY>
-# The next lines begin "artefact:" followed by <x-position> <y-position>, for each artefact
+# If third line is "rectangularTreasure" or "polygonTreasure":
+#   the fourth line is the treasure bounding box: <x1> <y1> <x2> <y2>
+#   then one line for each vertex of the shape: "point:" <x> <y>
+# If the third line is "circularTreasure":
+#   the fourth line is the treasure dimensions:
+#       <centreX> <centreY> <radius>
+# If the third line is "realworldTreasure":
+#   the fourth line is the treasure bounding box: <x1> <y1> <x2> <y2>
+#   then one line for each artefact: "artefact:" <x> <y>
 #
 # For all cases, the remaining lines begin "hole:" followed by:
 #   <centreX>, <centreY>, <width> <height>
@@ -52,27 +58,44 @@
 
 from kivy.app import App
 from kivy.uix.widget import Widget
-from kivy.graphics import Color, Ellipse, Line, Rectangle, Point, Mesh
+from kivy.graphics import Color, Ellipse, Line, Rectangle, Point, Mesh, PushMatrix, PopMatrix, Rotate
+from kivy.graphics.tesselator import Tesselator, TYPE_POLYGONS, WINDING_POSITIVE, WINDING_ODD, WINDING_NONZERO
 from kivy.core.window import Window
 from kivy.metrics import Metrics
 from kivy.uix.label import Label, CoreLabel
 from kivy.utils import get_color_from_hex
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.relativelayout import RelativeLayout
+from kivy.config import Config
+from kivy.uix.popup import Popup
+from kivy.uix.label import Label
 import os
+from pathlib import Path
 
-# set file name:  change this to refer to the file with field data you want
-# to display. Leave the printedFields directory in the file name.
+
+# This mode displays and generates png files for any hpf files in printedFields
+# directory that don't have a corresponding png file that is more recent:
+allNewHPFFiles = 1;
+# This mode displays and generates a png file for the file named in filname (below):
+onlyNamedFile = 2;
+
+# set mode:
+mode = allNewHPFFiles;
+#mode = onlyNamedFile;
+
+# set file name: change this to refer to the file with field data you want
+# to display when the mode is onlyNamedFile. Leave the printedFields directory in the file name.
 # The Image will be saved as "printedFields/<filename>.png".
 filename = "printedFields/\
-intersectField 100 holesize 0.5 treasure 10x10 holes 42 HexagonalLike\
+rectangle 20x5 Halton orientation 30 holes 10000 fieldsize 100 holesize 0.5\
 .hpf"
 
 # A kivy Widget that draws the holes and treasure defined in filename (above)
 # on the canvas.
 class CreateFieldImage(RelativeLayout):
-    def __init__(self,  **kwargs):
+    def __init__(self,  fileName:str, **kwargs):
         super().__init__(**kwargs);
+        self.fileName = fileName;
         self.displayFactor = 0;
 
         self.displayField();
@@ -89,8 +112,8 @@ class CreateFieldImage(RelativeLayout):
     # sets up the dimensions of the window, draws the background on the canvas,
     # and delegates drawing of the field to the appropriate method
     def displayField(self):
-        self.f = open("" + filename, 'r');
-        fieldType = self.f.readline();
+        self.f = open("" + self.fileName, 'r');
+        fieldLine = self.f.readline();
         dimensionsLine = self.f.readline();
         dimensionsTokens = dimensionsLine.split();
         biggestSide = int(dimensionsTokens[0]);
@@ -103,24 +126,29 @@ class CreateFieldImage(RelativeLayout):
             Color(1, 1, 1);
             Rectangle(pos=(0,0), size=(1000, 1000));
         
-        if fieldType.startswith("realworld"):
-            self.displayRealWorldField();
-        elif fieldType.startswith("intersect"):
-            self.displayIntersectField();
+        treasureTypeLine = self.f.readline();
+        treasureTokens = treasureTypeLine.split();
+        if treasureTokens[0].startswith("realworldTreasure"):
+            self.displayRealWorld();
         else:
-            print("error: type of field not recognized");
+            t = treasureTokens[0];
+            if not t.startswith("polygonTreasure") and not t.startswith("circularTreasure") and not t.startswith("rectangularTreasure"):
+                print("error: type of field not recognized");
+            self.displayDefault(t);
+        # TODO
+        # l = Label(text = self.fileName, color = (0,0,0,1), font_size = 20, outline_color=(1, 1, 1), outline_width=1, pos_hint = {"center_x":0.05, "center_y":0.05});
+        # self.add_widget(l);
     
     # display a field containing real world data on artefact distribution
-    def displayRealWorldField(self):
+    def displayRealWorld(self):
         with self.canvas:
             treasureLine = self.f.readline();
             treasureLineTokens = treasureLine.split();
-            if treasureLineTokens[0].startswith("realworldtreasure"):
-                Color(0,0,0);
-                bottomLeft = self.continuousConvertPoint(float(treasureLineTokens[1]), float(treasureLineTokens[2]));
-                topRight = self.continuousConvertPoint(float(treasureLineTokens[3]), float(treasureLineTokens[4]));
-                size = topRight[0] - bottomLeft[0], topRight[1] - bottomLeft[1];
-                Line(rectangle=(bottomLeft[0], bottomLeft[1], size[0], size[1]));
+            Color(0,0,0);
+            bottomLeft = self.continuousConvertPoint(float(treasureLineTokens[0]), float(treasureLineTokens[1]));
+            topRight = self.continuousConvertPoint(float(treasureLineTokens[2]), float(treasureLineTokens[3]));
+            size = topRight[0] - bottomLeft[0], topRight[1] - bottomLeft[1];
+            Line(rectangle=(bottomLeft[0], bottomLeft[1], size[0], size[1]));
             line = self.f.readline();
             while len(line) > 0:
                 lineTokens = line.split();
@@ -143,32 +171,26 @@ class CreateFieldImage(RelativeLayout):
                 line = self.f.readline();
 
     # display a field containing circular, rectangular, or polygon treasure
-    def displayIntersectField(self):
+    def displayDefault(self, treasureType:str):
         with self.canvas:
-            treasureLine = self.f.readline();
-            treasureLineTokens = treasureLine.split();
-            if treasureLineTokens[0].startswith("circularTreasure"):
+            if treasureType.startswith("circularTreasure"):
+                treasureLine = self.f.readline();
+                treasureLineTokens = treasureLine.split();
                 Color(0, 1, 0);
-                centre = self.continuousConvertPoint(float(treasureLineTokens[1]), float(treasureLineTokens[2]));
-                radius = float(treasureLineTokens[3]) * self.displayFactor;
+                centre = self.continuousConvertPoint(float(treasureLineTokens[0]), float(treasureLineTokens[1]));
+                radius = float(treasureLineTokens[2]) * self.displayFactor;
 
                 bottomLeftX = centre[0] - radius;
                 bottomLeftY = centre[1] - radius;
                 Ellipse(pos=(bottomLeftX, bottomLeftY), size=(radius*2, radius*2));
                 nextLine = self.f.readline();
-            elif treasureLineTokens[0].startswith("rectangularTreasure"):
-                Color(0, 1, 0);
-                centre = self.continuousConvertPoint(float(treasureLineTokens[1]), float(treasureLineTokens[2]));
-                size = self.convertSize(float(treasureLineTokens[3]), float(treasureLineTokens[4]));
-                posX = centre[0] - size[0]/2;
-                posY = centre[1] - size[1]/2;
-                Rectangle(pos=(posX, posY), size = size);
-                nextLine = self.f.readline();
-            else:
+            elif treasureType.startswith("rectangularTreasure") or treasureType.startswith("polygonTreasure"):
+                treasureLine = self.f.readline();
+                treasureLineTokens = treasureLine.split();
                 # polygon treasure bounds
                 Color(0,0,0);
-                bottomLeft = self.continuousConvertPoint(float(treasureLineTokens[1]), float(treasureLineTokens[2]));
-                topRight = self.continuousConvertPoint(float(treasureLineTokens[3]), float(treasureLineTokens[4]));
+                bottomLeft = self.continuousConvertPoint(float(treasureLineTokens[0]), float(treasureLineTokens[1]));
+                topRight = self.continuousConvertPoint(float(treasureLineTokens[2]), float(treasureLineTokens[3]));
                 size = topRight[0] - bottomLeft[0], topRight[1] - bottomLeft[1];
                 Line(rectangle=(bottomLeft[0], bottomLeft[1], size[0], size[1]));
                 # polygon treasure shape
@@ -205,6 +227,7 @@ class CreateFieldImage(RelativeLayout):
     # Returns the first line of the holes definitions in the input file.
     def printPolygonShape(self) -> str:
         verticesList = [];
+        lineList = [];
         index = 0;
         indicesList = [];
         line = self.f.readline();
@@ -220,17 +243,19 @@ class CreateFieldImage(RelativeLayout):
                 verticesList.append(1);
                 indicesList.append(index);
                 index = index + 1;
+                lineList.append(converted[0]);
+                lineList.append(converted[1]);
             else:
                 with self.canvas:
-                    Color(0, 1, 0)
-                    #indicesList.append(0);
-                    Mesh(vertices = verticesList, indices = indicesList, mode="triangle_fan");
+                    Color(0.02, 0.48, 0.32, 1)
+                    Line(points=lineList, width = 1.25)
                 return line;
             line = self.f.readline();
 
+
 # A widget that surrounds the CreateFieldImage widget with a border
 class ContainerWidget(FloatLayout):
-    def __init__(self, **kwargs):
+    def __init__(self, fileName, **kwargs):
         
         super().__init__(**kwargs)
         Window.size = (1004/Metrics.density, 1004/Metrics.density);
@@ -240,21 +265,53 @@ class ContainerWidget(FloatLayout):
             Color(0, 0, 0);
             Line(points=[0,0,1004,0, 1004, 1004, 0, 1004, 0,0], width=2);
 
+        self.add_widget(CreateFieldImage(fileName, pos=(2,2)));
 
-        self.add_widget(CreateFieldImage(pos=(2,2)));
 
 # A kivy app that creates the CreateFieldImage widget
 class FieldApp(App):
+    def __init__(self, fileName):
+        super().__init__();
+        self.fileName = fileName;
+    
     def build(self):
-        self.widget = ContainerWidget()
+        self.widget = ContainerWidget(self.fileName);
+        self.title = self.fileName;
         return self.widget;
 
     # saves the graphical field as a png file
     def export(self):
-        stem = os.path.splitext(filename)[0];
-        self.widget.export_to_png(stem + '.png')
+        stem = os.path.splitext(self.fileName)[0];
+        self.widget.export_to_png(stem + '.png');
+
+
+# A message to display when no new hpf files are found.
+class Message(App):
+    def build(self):
+        Window.size = (400, 100);
+        content = Label(text = "No new hpf files found.\nSee the printedFields directory for png files.", halign = "center");
+        return content;
+
 
 if __name__ == '__main__':
-    app = FieldApp();
-    app.run();
-    app.export();
+    if mode == allNewHPFFiles:
+        numFiles = 0;
+        for f in Path("printedFields").glob("*.hpf"):
+            fname = f.name;
+            png = Path("printedFields/" + f.stem + ".png");
+            if not png.exists() or png.stat().st_mtime < f.stat().st_mtime:
+                numFiles += 1;
+                app = FieldApp("printedFields/" + fname);
+                app.run();
+                app.export();
+        if numFiles == 0:
+            popup = Message();
+            popup.run();
+    
+    elif mode == onlyNamedFile:
+        app = FieldApp(filename);
+        app.run();
+        app.export();
+    else:
+        print("unexpected mode:", mode);
+

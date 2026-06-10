@@ -19,7 +19,10 @@
 
 
 # This file contains code to plot graphs and tables using the matplotlib library.
-# It expects data as created by Holes.py.
+# It expects data as created by ExperimentRunner.py and Tables.py.
+# Note that for functions used in Layout Matters, the order of plotting curves
+# is important as there is a single legend for all such graphs. The order is:
+# "hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random".
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -31,6 +34,7 @@ import sys
 from pathlib import Path
 from Tables import interpolateHoles, interpolateSuccessRate
 from HolesDictionary import HolesDictionary
+from cycler import cycler
 
 # Plot experiments used in the Size Matters paper.
 # Plots experiments with small holes and with big holes. Also optionally plots the small
@@ -188,9 +192,9 @@ def plotExperiment(smallHolesFileName:str, bigHolesFileName:str, outputFileName:
     plt.savefig("graphs/" + outputFileName);
 
 
-# Plots a table with the given data. Data is a 2-D array, with an inner array for each
+# Plots a table with the given data. data is a 2-D array, with an inner array for each
 # row in the table. The first row is assumed to have column titles.
-# figwidth and figheight are the dimensions of the graph. 
+# figwidth and figheight are the dimensions of the table.
 # scalex and scaley are the amount to scale the graph in each direction (e.g. 2, 2).
 # outputFileName is where the table is stored. This should include the subdirectory,
 # of the "graphs" directory in which to store the table and a ".png" suffix.
@@ -227,136 +231,247 @@ def plotTable(data:list, figwidth:float, figheight:float, scalex:float, scaley:f
     _saveTableDataToCsv("graphs/" + outputFileName[:-4], data);
 
 
-# Plots a graph of the success of various layout algorithms when the treasure is
-# defined by a real world polygon.
-# Data is assumed to be in the "realworld" subdirectory of the "data" directory.
-# Graph is stored in outputFileName which should include the subdirectory of the
-# graphs directory and a ".png" suffix.
-# The polygon is assumed to be vertically elongated, unless rotate is True
-# in which case it is assumed to be horizontally elongated.
-def plotPolygonSuccessExperiment(fieldSize:int, outputFileName:str, maxX:int = -1, maxY:int = -1, rotate:bool = False, showGraph = False):
+# global avoiding using both red and green for those who are colourblind
+myColours = ["blue", "orange", "saddlebrown", "red", "fuchsia", "black"];
+
+
+# Creates a legend for Layout Matters graphs, showing colours for the various
+# layout algorithms.
+def createLegend():
+    plt.rcParams['axes.prop_cycle'] = cycler(color=myColours)
+    plt.plot([], [], label='Hexagonal-like');
+    plt.plot([], [], label='StaggerXY');
+    plt.plot([], [], label='RandomisedStaggerXY');
+    plt.plot([], [], label='Halton');
+    plt.plot([], [], label='Random');
+    plt.axis("off");
+
+    legend = plt.legend(fontsize=26, loc="center");
+    for line in legend.get_lines():
+        line.set_linewidth(3.0);
+
+    plt.tight_layout();
+    filename = "graphs/legend.png";
+    outputFile = Path(filename);
+    outputFile.parent.mkdir(exist_ok=True, parents=True)
+    plt.savefig(filename);
+
+    plt.close();
+
+
+# Helper function to plot a success experiment showing success rate vs number of holes
+# for each of the layoutAlgorithms.
+# fileStart is the start of the data files to use and fileEnd the end, (including the csv
+# suffix) so the data files are "<fileStart><layout-algorithm><fileEnd>".
+# capY caps the y axis at its value, when maxY is None.
+def _plotSuccessExperiment(fileStart:str, fileEnd:str, layoutAlgorithms:list, title:str, outputFileName:str, maxX:int = None, maxY:int = None, minX:int = None, minY:int = None, capY:int = None):
+    plt.rcParams['axes.prop_cycle'] = cycler(color=myColours)
     fig = plt.figure();
     ax1 = fig.add_subplot(111);
 
-    if rotate:
-        orientation = "horizontal";
-    else:
-        orientation = "vertical"
-
-    fileStart = "data/realworld/" + orientation + "polygon "
-    fileEnd = " fieldsize" + str(fieldSize) + ".csv"
-
     maxHoles = -1;
-    for la in ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"]:
+    dataMinY = sys.maxsize;
+    dataMaxY = -1;
+    for la in layoutAlgorithms:
         f = open(fileStart + la + fileEnd);
         lines = csv.DictReader(f, delimiter=',', skipinitialspace=True);
         holes = [];
         data = [];
         for row in lines:
             holesValue = int(row["actualholes"]);
+            successRate = float(row["successrate"]);
             holes.append(holesValue);
-            data.append(float(row["successrate"]));
+            data.append(successRate);
             if holesValue > maxHoles:
                 maxHoles = holesValue;
+            if (minX == None or holesValue > minX) and (maxX == None or holesValue < maxX):
+                if successRate < dataMinY:
+                    dataMinY = successRate;
+                if successRate > dataMaxY:
+                    dataMaxY = successRate;
+            if capY != None and dataMaxY > capY:
+                dataMaxY = capY;
 
         ax1.plot(holes, data, label=HolesDictionary.lookup(la, True));
-    ax1.legend(loc="lower right");
-    plt.grid();
-    if maxX == -1:
+    if maxX == None:
         maxX = maxHoles;
-    if maxY == -1:
-        maxY = 100
-    ax1.set_xlim(0, maxX);
-    ax1.set_ylim(0, maxY);
-    ax1.set_xlabel("number of holes");
-    ax1.set_ylabel("success rate");
-    titleOrientation = orientation.capitalize();
-    plt.title("Success Rate of Layout Algorithms on " + titleOrientation + " Real World Site");
+    if maxY == None:
+        maxY = dataMaxY;
+    if minX == None:
+        minX = 0;
+    if minY == None:
+        minY = dataMinY;
+    ax1.set_xlim(minX, maxX);
+    ax1.set_ylim(minY, maxY);
+    ax1.set_xlabel("number of pits");
+    ax1.set_ylabel("success rate (%)");
+    plt.title(title);
+    plt.grid();
     fig.tight_layout();
     plt.draw();
 
-    filename = "graphs/" + outputFileName;
-    outputFile = Path(filename);
+    outputFile = Path(outputFileName);
     outputFile.parent.mkdir(exist_ok=True, parents=True)
-    plt.savefig(filename);
-    if showGraph:
-        plt.show();
+    plt.savefig(outputFileName);
 
     plt.close(fig);
 
 
+# Plots a graph of the success of various layout algorithms when the treasure is
+# defined by a case study polygon, for a given rotation.
+# Data are assumed to be in the "casestudies" subdirectory of the "data" directory.
+# Graph is stored in outputFileName which should include the subdirectory of the
+# graphs directory and a ".png" suffix.
+# def plotPolygonSuccessExperiment(fieldSize:int, description:str, outputFileName:str, maxX:int = -1, maxY:int = -1, rotation:float = 0, showGraph = False):
+#     plt.rcParams['axes.prop_cycle'] = cycler(color=myColours)
+#     fig = plt.figure();
+#     ax1 = fig.add_subplot(111);
+
+#     fileStart = "data/" + HolesDictionary.getCaseStudiesDirectoryName() + "/casestudypolygon " + description + "@" + str(rotation) + " ";
+#     fileEnd = " fieldsize" + str(fieldSize) + ".csv"
+
+#     maxHoles = -1;
+#     for la in ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"]:
+#         f = open(fileStart + la + fileEnd);
+#         lines = csv.DictReader(f, delimiter=',', skipinitialspace=True);
+#         holes = [];
+#         data = [];
+#         for row in lines:
+#             holesValue = int(row["actualholes"]);
+#             holes.append(holesValue);
+#             data.append(float(row["successrate"]));
+#             if holesValue > maxHoles:
+#                 maxHoles = holesValue;
+
+#         ax1.plot(holes, data, label=HolesDictionary.lookup(la, True));
+#     #ax1.legend(loc="lower right");
+#     plt.grid();
+#     if maxX == -1:
+#         maxX = maxHoles;
+#     if maxY == -1:
+#         maxY = 100
+#     ax1.set_xlim(0, maxX);
+#     ax1.set_ylim(0, maxY);
+#     ax1.set_xlabel("number of pits");
+#     ax1.set_ylabel("success rate");
+#     titleDescripton = HolesDictionary.lookup(description);
+#     orientation = HolesDictionary.orientationLabel(rotation);
+#     plt.title("Performance of Layout Algorithms\n" + titleDescripton + " Case Study Site\n" + orientation + " Orientation");
+#     plt.grid();
+#     fig.tight_layout();
+#     plt.draw();
+
+#     filename = "graphs/" + outputFileName;
+#     outputFile = Path(filename);
+#     outputFile.parent.mkdir(exist_ok=True, parents=True)
+#     plt.savefig(filename);
+#     if showGraph:
+#         plt.show();
+
+#     plt.close(fig);
+
+# Plots a graph of the success of various layout algorithms when the treasure is
+# defined by a case study polygon, for a given rotation.
+# Data are assumed to be in the "casestudies" subdirectory of the "data" directory.
+# Graph is stored in outputFileName which should include the subdirectory of the
+# graphs directory and a ".png" suffix.
+def plotPolygonSuccessExperiment(fieldSize:int, description:str, outputFileName:str, maxX:int = None, maxY:int = None, rotation:float = 0):
+    fileStart = "data/" + HolesDictionary.getCaseStudiesDirectoryName() + "/casestudypolygon " + description + "@" + str(rotation) + " ";
+    fileEnd = " fieldsize" + str(fieldSize) + ".csv"
+    layoutAlgorithms = ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"];
+    titleDescripton = HolesDictionary.lookup(description);
+    orientation = HolesDictionary.orientationLabel(rotation);
+    title = "Performance of Layout Algorithms\n" + titleDescripton + " Case Study Site\n" + orientation + " Orientation";
+    outputFilename = "graphs/" + outputFileName;
+    _plotSuccessExperiment(fileStart, fileEnd, layoutAlgorithms, title, outputFilename, maxX = maxX, maxY = maxY);
+
 # Plots a graph of the success of the given layoutAlgorithms on a square field
-# of size fieldSize, with treasure of the given dimensions and area.
-# Graph is shown in a window if showGraph is True. Data is assumed
-# to be in the "drilldown" subdirectory of the data directory.
+# of size fieldSize, with treasure of the given dimensions, area, and rotation.
+# Graph is shown in a window if showGraph is True. Data are assumed
+# to be in the "success" subdirectory of the data directory.
 # minX, maxX, minY, and maxY are the minimum and maximum values for the
 # x and y axes respectively.
 # The graph is saved in a file named:
 # "success <orientation> ratio <ratio> fieldsize<fieldSize> siteArea<siteArea>.png".
-def plotSuccessExperiment(fieldSize:int, treasureWidth:float, treasureHeight:float, siteArea:int, layoutAlgorithms:list, minX = -1, maxX:int = -1, minY = -1, maxY = -1, showGraph:bool = True):
-    fig = plt.figure();
-    ax1 = fig.add_subplot(111);
+# def plotSuccessExperiment(fieldSize:int, treasureShortSide:float, treasureLongSide:float, treasureRotation:float, siteArea:int, layoutAlgorithms:list, minX = -1, maxX:int = -1, minY = -1, maxY = -1, showGraph:bool = True):
+#     plt.rcParams['axes.prop_cycle'] = cycler(color=myColours);
+#     fig = plt.figure();
+#     ax1 = fig.add_subplot(111);
 
-    maxHoles = -1;
-    for la in layoutAlgorithms:
-        fileName = "data/drilldown/"+str(treasureWidth) + "x" + str(treasureHeight) + "rectangle " + la + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
-        f = open(fileName);
-        lines = csv.DictReader(f, delimiter=',', skipinitialspace=True);
-        holes = [];
-        data = [];
-        for row in lines:
-            holesValue = int(row["actualholes"]);
-            successRate = float(row["successrate"]);
-            if successRate == 0:
-                pass;
-            else:
-                holes.append(holesValue);
-                data.append(successRate);
-            if holesValue > maxHoles:
-                maxHoles = holesValue;
+#     maxHoles = -1;
+#     for la in layoutAlgorithms:
+#         fileName = "data/" + HolesDictionary.getSuccessDirectoryName() + "/" +str(treasureLongSide) + "x" + str(treasureShortSide) + "@" + str(treasureRotation) + "rectangle " + la + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
+#         f = open(fileName);
+#         lines = csv.DictReader(f, delimiter=',', skipinitialspace=True);
+#         holes = [];
+#         data = [];
+#         for row in lines:
+#             holesValue = int(row["actualholes"]);
+#             successRate = float(row["successrate"]);
+#             if successRate == 0:
+#                 pass;
+#             else:
+#                 holes.append(holesValue);
+#                 data.append(successRate);
+#             if holesValue > maxHoles:
+#                 maxHoles = holesValue;
 
-        ax1.plot(holes, data, label=HolesDictionary.lookup(la, True));
-    ax1.legend(loc="lower right");
-    if maxX == -1:
-        maxX = maxHoles;
-    if maxY == -1:
-        maxY = 100;
-    if minX == -1:
-        minX = 0;
-    if minY == -1:
-        minY = 0;
+#         ax1.plot(holes, data, label=HolesDictionary.lookup(la, True));
+#     #ax1.legend(loc="lower right");
+#     if maxX == -1:
+#         maxX = maxHoles;
+#     if maxY == -1:
+#         maxY = 100;
+#     if minX == -1:
+#         minX = 0;
+#     if minY == -1:
+#         minY = 0;
 
-    ax1.set_xlim(minX, maxX);
-    ax1.set_ylim(minY, maxY);
-    ax1.set_xlabel("number of holes");
-    ax1.set_ylabel("success rate");
-    if treasureWidth > treasureHeight:
-        orientation = "Horizontally Elongated";
-        ratio = treasureWidth/treasureHeight
-    elif treasureWidth == treasureHeight:
-        orientation = "Square";
-        ratio = 1;
-    else:
-        orientation = "Vertically Elongated";
-        ratio = treasureHeight / treasureWidth;
-    plt.title("Success Rate of Layout Algorithms on " + orientation + " Site\nElongation Ratio " + str(round(ratio)) + ", Field Size " + str(fieldSize) + "m x " + str(fieldSize) + "m, Site Area " + str(siteArea) + "m\u00b2");
-    fig.tight_layout();
-    plt.grid();
-    plt.draw();
+#     ax1.set_xlim(minX, maxX);
+#     ax1.set_ylim(minY, maxY);
+#     ax1.set_xlabel("number of pits");
+#     ax1.set_ylabel("success rate (%)");
+#     ratio = treasureLongSide / treasureShortSide;
+#     orientation = HolesDictionary.orientationLabel(treasureRotation);
+    
+#     plt.title("Performance of Layout Algorithms for " + orientation + " Orientation\nElongation Ratio " + str(round(ratio)) + ", Field Size " + str(fieldSize) + "m x " + str(fieldSize) + "m, Site Area " + str(siteArea) + "m\u00b2");
+#     fig.tight_layout();
+#     plt.grid();
+#     plt.draw();
+
+#     addToFileName = "";
+#     if maxX < 100:
+#         addToFileName = " zoom"
+#     filename = "graphs/" + HolesDictionary.getSuccessDirectoryName() + "/success " + orientation + " ratio " + str(round(ratio)) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".png";
+#     outputFile = Path(filename);
+#     outputFile.parent.mkdir(exist_ok=True, parents=True)
+#     plt.savefig(filename);
+
+#     if showGraph:
+#         plt.show();
+    
+#     plt.close(fig);
+
+# Plots a graph of the success of the given layoutAlgorithms on a square field
+# of size fieldSize, with treasure of the given dimensions, area, and rotation.
+# Data are assumed to be in the "success" subdirectory of the data directory.
+# minX, maxX, minY, and maxY are the minimum and maximum values for the
+# x and y axes respectively.
+# The graph is saved in a file named:
+# "success <orientation> ratio <ratio> fieldsize<fieldSize> siteArea<siteArea>.png".
+def plotSuccessExperiment(fieldSize:int, treasureShortSide:float, treasureLongSide:float, treasureRotation:float, siteArea:int, layoutAlgorithms:list, minX = None, maxX:int = None, minY = None, maxY = None):
+    fileStart = "data/" + HolesDictionary.getSuccessDirectoryName() + "/" +str(treasureLongSide) + "x" + str(treasureShortSide) + "@" + str(treasureRotation) + "rectangle ";
+    fileEnd = " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
+
+    ratio = treasureLongSide / treasureShortSide;
+    orientation = HolesDictionary.orientationLabel(treasureRotation);
+    title = "Performance of Layout Algorithms for " + orientation + " Orientation\nElongation Ratio " + str(round(ratio)) + ", Field Size " + str(fieldSize) + "m x " + str(fieldSize) + "m, Site Area " + str(siteArea) + "m\u00b2";
 
     addToFileName = "";
     if maxX < 100:
         addToFileName = " zoom"
-    filename = "graphs/drilldown/success " + orientation + " ratio " + str(round(ratio)) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".png";
-    outputFile = Path(filename);
-    outputFile.parent.mkdir(exist_ok=True, parents=True)
-    plt.savefig(filename);
-
-    if showGraph:
-        plt.show();
-    
-    plt.close(fig);
-
+    outputFilename = "graphs/" + HolesDictionary.getSuccessDirectoryName() + "/success " + orientation + " ratio " + str(round(ratio)) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".png";
+    _plotSuccessExperiment(fileStart, fileEnd, layoutAlgorithms, title, outputFilename, minX = minX, maxX = maxX, minY = minY, maxY = maxY);
 
 # saves the given data (which is assumed to be a two-D array suitable for
 # creating a table) to fileName which should include the path but no suffix.
@@ -373,13 +488,13 @@ def _saveTableDataToCsv(fileName:str, data:list) -> None:
                     file.write("\n");
 
 
-# Adds data for the given layoutAlgorithm to the given data list for success rates
-# 80%, 95%, and 100%, being the number of holes needed to reach each success threshold.
-# The data added are for the given treasureWidth and treasureHeight, using raw success
-# data assumed to be in the "data/drilldown" directory. The data are added as a list
-# appended to the end of the data list (so data is a 2D array to be used to create a table).
-def _fillInData(fieldSize:int, siteArea:int, data:list, layoutAlgorithm:str, treasureWidth:float, treasureHeight:float) -> None:
-    fileName = "data/drilldown/"+str(treasureWidth) + "x" + str(treasureHeight) + "rectangle " + layoutAlgorithm + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
+# Adds data for a layoutAlgorithm to the given data list, being the number of holes
+# needed to reach the success thresholds of 80%, 95%, and 100%.
+# The given fileName is assumed to contain success data for the algorithm, which includes
+# the relative path starting with (and including) the data directory.
+# Data are added as a list appended to the end of the data list (so data is a 2D array
+# to be used to create a table).
+def _fillInData(fileName:str, data:list, layoutAlgorithm:str) -> None:
     f = open(fileName);
     lines = csv.DictReader(f, delimiter=',', skipinitialspace=True);
     holes = [];
@@ -424,43 +539,28 @@ def _getMinimumCells(data:list, numSites:int, startColumn:int) -> list:
 
 # Plots a table showing the number of holes needed to acheive success rates of
 # 80%, 95%, and 100% for the various layoutAlgorithms for various treasure elongation
-# ratios (1, 5, and 20, both vertically and horizontally elongated).
+# ratios (1, 5, and 20) and for both vertically and horizontally oriented treasure.
 # There are 5 rows (one for each layout algorithm) for each treasure specification.
-# Raw success data is assumed to be in the "data/drilldown" directory.
+# Raw success data are assumed to be in the "data/success" directory.
 # The table is saved to a file named:
-# "graphs/drilldown/holes for success rates table fieldsize<fieldSize> siteArea<siteArea>.png".
+# "graphs/success/holes for success rates table fieldsize<fieldSize> siteArea<siteArea>.png".
 # Also saves the data to a csv file with the same file name but a ".csv" suffix.
 def plotHolesForSuccessRatesTable(fieldSize:int, siteArea:int, layoutAlgorithms:list):
-    data = [["Site Shape\n(Elongation Ratio)", "Layout Algorithm", "80% Success\nRate (pits)", "95% Success\nRate (pits)", "100% Success\nRate (pits)"]];
+    data = [["Site Shape\n(Orientation and \nElongation Ratio)", "Layout Algorithm", "80% Success\nRate (pits)", "95% Success\nRate (pits)", "100% Success\nRate (pits)"]];
     for ratio in [1, 5, 20]:
-        for vertical in [True, False]:
-            if not vertical and ratio == 1:
+        for rotation in [0, 90]:
+            if rotation == 90 and ratio == 1:
                 continue;
-            if vertical:
-                width = round(math.sqrt(siteArea / ratio), 2);
-                height = round(siteArea/width, 2);
-            else:
-                height = round(math.sqrt(siteArea / ratio), 2);
-                width = round(siteArea/height, 2);
+            shortSide = math.sqrt(siteArea / ratio);
+            longSide = siteArea/shortSide;
 
-            if ratio == 1:
-                data.append(["Square\n(1:1)"]);
-                for la in layoutAlgorithms:
-                    _fillInData(fieldSize, siteArea, data, la, width, height);
-                    if la != layoutAlgorithms[len(layoutAlgorithms) - 1]:
-                        data.append([""]);
-            elif vertical == True:
-                data.append(["Vertically Elongated\n(" + str(ratio) + ":1)"]);
-                for la in layoutAlgorithms:
-                    _fillInData(fieldSize, siteArea, data, la, width, height);
-                    if la != layoutAlgorithms[len(layoutAlgorithms) - 1]:
-                        data.append([""]);
-            elif vertical == False:
-                data.append(["Horizontally Elongated\n(" + str(ratio) + ":1)"]);
-                for la in layoutAlgorithms:
-                    _fillInData(fieldSize, siteArea, data, la, width, height);
-                    if la != layoutAlgorithms[len(layoutAlgorithms) - 1]:
-                        data.append([""]);
+            data.append([str(rotation) + " Degrees\n(" + str(ratio) + ":1)"]);
+            for la in layoutAlgorithms:
+                fileName = "data/" + HolesDictionary.getSuccessDirectoryName() + "/" + str(round(longSide, 2)) + "x" + str(round(shortSide, 2)) + "@" + str(rotation) + "rectangle " + la + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
+                _fillInData(fileName, data, la);
+                if la != layoutAlgorithms[len(layoutAlgorithms) - 1]:
+                    data.append([""]);
+
     minimumCells = _getMinimumCells(data, 5, 2);
     figwidth = 9.4;
     figheight = 13;
@@ -470,14 +570,17 @@ def plotHolesForSuccessRatesTable(fieldSize:int, siteArea:int, layoutAlgorithms:
     table = ax.table(cellText=data[1:], colLabels=data[0], loc='center', cellLoc='left', colColours=ccolors, colWidths=[0.3, 0.25, 0.15, 0.15, 0.15]);
     table.auto_set_font_size(False);
     for (row, col), cell in table.get_celld().items():
-        cell.set_height(0.04);
+        if row == 0:
+            cell.set_height(0.06);
+        else:
+            cell.set_height(0.04);
         if col == 0 and row > 0:
             cell.set_text_props(fontproperties=FontProperties(weight='bold'))
         if (row, col) in minimumCells:
             cell.get_text().set_color('darkgreen');
     plt.title("Pits for Success Rates\n Field Size " + str(fieldSize) + "m x " + str(fieldSize) + "m, Site Area " + str(siteArea) + "m\u00b2", pad=25);
 
-    filestem = "graphs/drilldown/holes for success rates table fieldsize" + str(fieldSize) + " siteArea" + str(siteArea);
+    filestem = "graphs/" + HolesDictionary.getSuccessDirectoryName() + "/holes for success rates table fieldsize" + str(fieldSize) + " siteArea" + str(siteArea);
     outputFile = Path(filestem + ".png");
     outputFile.parent.mkdir(exist_ok=True, parents=True)
     plt.savefig(filestem + ".png");
@@ -485,46 +588,19 @@ def plotHolesForSuccessRatesTable(fieldSize:int, siteArea:int, layoutAlgorithms:
     _saveTableDataToCsv(filestem, data);
 
 
-# Adds data for the given layoutAlgorithm to the given data list for success rates.
-# The data are the numbers of holes needed by that layout algorithm to reach
-# 80%, 95%, and 100% success thresholds.
-# The data added are for a real world polygon treasure, in the vertical orientation
-# if vertical is True, otherwise the horizontal orientation. Raw success
-# data is assumed to be in the "data/realworld" directory. The data are added as a list
-# appended to the end of the data list (so data is a 2D array to be used to create a table).
-def _fillInDataPolygon(fieldSize:int, data:list, layoutAlgorithm:str, vertical:bool = True):
-    orientation = "vertical";
-    if not vertical:
-        orientation = "horizontal"
-    fileName = "data/realworld/"+ orientation + "polygon " + layoutAlgorithm + " fieldsize" + str(fieldSize) + ".csv";
-    f = open(fileName);
-    lines = csv.DictReader(f, delimiter=',', skipinitialspace=True);
-    holes = [];
-    successRates = [];
-    for row in lines:
-        holesValue = int(row["actualholes"]);
-        successRate = float(row["successrate"]);
-        holes.append(holesValue);
-        successRates.append(successRate);
-    data[len(data) - 1].append(HolesDictionary.lookup(layoutAlgorithm, True));
-    for sr in [80, 95, 100]:
-        interpolatedHole = interpolateSuccessRate(sr, successRates, holes);
-        data[len(data) - 1].append(round(interpolatedHole, 2));
-
-
 # Plots a table showing the number of holes needed to acheive success rates of
 # 80%, 95%, and 100% for the various layoutAlgorithms for treasure defined
-# by a real world polygon shape. The treasure is oriented vertically if vertical
-# is True, otherwise horizontally.
-# Raw success data is assumed to be in the "data/realworld" directory.
+# by a case study polygon shape at the given rotation (can be either 0 or 90).
+# Raw success data are assumed to be in the "data/casestudies" directory.
 # The graph is saved to a file named:
-# "graphs/realworld/holes for success rates table <orientation>polygon fieldsize<fieldSize>.png".
-# Data is also saved to a csv file with the same name (but ".csv" suffix).
-def plotPolygonHolesForSuccessRatesTable(fieldSize:int, layoutAlgorithms:list, vertical:bool = True):
+# "graphs/casestudies/holes for success rates table <description> <orientation> polygon fieldsize<fieldSize>.png".
+# Data are also saved to a csv file with the same name (but ".csv" suffix).
+def plotPolygonHolesForSuccessRatesTable(fieldSize:int, description:str, layoutAlgorithms:list, rotation:float):
     data = [["Layout Algorithm", "80% Success\nRate (pits)", "95% Success\nRate (pits)", "100% Success\nRate (pits)"]];
     for la in layoutAlgorithms:
         data.append([]);
-        _fillInDataPolygon(fieldSize, data, la, vertical);
+        fileName = "data/" + HolesDictionary.getCaseStudiesDirectoryName() + "/casestudypolygon "+ description + "@" + str(rotation) + " " + la + " fieldsize" + str(fieldSize) + ".csv";
+        _fillInData(fileName, data, la);
     minimumCells = _getMinimumCells(data, 1, 1);
     
     fig, ax = plt.subplots(figsize=(8, 4));
@@ -539,14 +615,21 @@ def plotPolygonHolesForSuccessRatesTable(fieldSize:int, layoutAlgorithms:list, v
         if (row, col) in minimumCells:
             cell.get_text().set_color('darkgreen');
     table.scale(1.2, 1);
+    fig.set_figheight(5);
     ax.spines['bottom'].set_visible(False)
-    orientation = "horizontal";
-    if vertical:
-        orientation = "vertical";
-    titleOrientation = orientation.capitalize();
-    plt.title("Pits for Success Rates\nReal World Site Shape, " + titleOrientation + "\nField Size " + str(fieldSize) + "m x " + str(fieldSize) + "m",y = 0.9);
     
-    filestem = "graphs/realworld/holes for success rates table " + orientation + "polygon fieldsize" + str(fieldSize);
+    if rotation == 0:
+        orientation = "horizontal";
+    elif rotation == 90:
+        orientation = "vertical";
+    else:
+        print("unexpected rotation: " + str(rotation));
+        exit(1);
+    titleOrientation = orientation.capitalize();
+    titleElongation = HolesDictionary.lookup(description);
+    plt.title("Pits for Success Rates\nCase Study Site Shape, " + titleElongation + "\n" + titleOrientation + " Orientation\nField Size " + str(fieldSize) + "m x " + str(fieldSize) + "m",y = 0.9);
+    
+    filestem = "graphs/" + HolesDictionary.getCaseStudiesDirectoryName() + "/holes for success rates table " + description + " " + orientation + " polygon fieldsize" + str(fieldSize);
     outputFile = Path(filestem + ".png");
     outputFile.parent.mkdir(exist_ok=True, parents=True)
     plt.savefig(filestem + ".png");
@@ -558,11 +641,11 @@ def plotPolygonHolesForSuccessRatesTable(fieldSize:int, layoutAlgorithms:list, v
 # success rate by 1 percentage point, accross all success rates (from 1% to 100%)
 # for the various layoutAlgorithms.
 # This is not used in the papers, but may be used in future.
-# Data is assumed to exist int the "data/drilldown" directory.
+# Data are assumed to exist int the "data/success" directory.
 # The graph is saved to a file with name:
-# "graphs/drilldown/cost of success <layoutAlgorithm> <orientation> ratio<ratio> fieldsize<fieldSize> siteArea<siteArea>.png". 
-def plotCostGraph(fieldSize:int, treasureWidth:float, treasureHeight:float, siteArea:int, layoutAlgorithm:str, maxY = None):
-    fileName = "data/drilldown/"+str(treasureWidth) + "x" + str(treasureHeight) + "rectangle " + layoutAlgorithm + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
+# "graphs/success/cost of success <layoutAlgorithm> <orientation> ratio<ratio> fieldsize<fieldSize> siteArea<siteArea>.png". 
+def plotCostGraph(fieldSize:int, treasureShortSide:float, treasureLongSide:float, rotation:float, siteArea:int, layoutAlgorithm:str, maxY = None):
+    fileName = "data/" + HolesDictionary.getSuccessDirectoryName() + "/" + str(round(treasureLongSide, 2)) + "x" + str(round(treasureShortSide, 2)) + "@" + str(rotation) + "rectangle " + layoutAlgorithm + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
     f = open(fileName);
     lines = csv.DictReader(f, delimiter=',', skipinitialspace=True);
     holes = [];
@@ -582,15 +665,13 @@ def plotCostGraph(fieldSize:int, treasureWidth:float, treasureHeight:float, site
         additionalHoles.append(newHole - hole);
         hole = newHole;
 
-    if treasureWidth > treasureHeight:
-        orientation = "Horizontally Elongated";
-        ratio = treasureWidth/treasureHeight
-    elif treasureWidth == treasureHeight:
+    ratio = treasureLongSide/treasureShortSide;
+    if treasureShortSide == treasureLongSide:
         orientation = "Square";
-        ratio = 1;
-    else:
+    elif rotation == 0:
+        orientation = "Horizontally Elongated";
+    elif rotation == 90:
         orientation = "Vertically Elongated";
-        ratio = treasureHeight / treasureWidth;
     
     fig = plt.figure();
     ax1 = fig.add_subplot(111);
@@ -604,7 +685,7 @@ def plotCostGraph(fieldSize:int, treasureWidth:float, treasureHeight:float, site
     fig.set_figheight(5);
     plt.subplots_adjust(top=0.85);
     plt.title("Cost of Increasing Success Rate by 1 Percentage Point\n" + HolesDictionary.lookup(layoutAlgorithm, True) + " Layout, " + orientation + " Site\nElongation Ratio " + str(round(ratio)) + ", Field Size " + str(fieldSize) + "m x " + str(fieldSize) + "m, Site Area " + str(siteArea) + "m\u00b2");
-    outputFileName = "graphs/drilldown/cost of success " + HolesDictionary.lookup(layoutAlgorithm) + " " + orientation + " ratio" + str(round(ratio)) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea); 
+    outputFileName = "graphs/" + HolesDictionary.getSuccessDirectoryName() + "/cost of success " + HolesDictionary.lookup(layoutAlgorithm) + " " + orientation + " ratio" + str(round(ratio)) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea); 
     outputFile = Path(outputFileName);
     outputFile.parent.mkdir(exist_ok=True, parents=True)
     plt.savefig(outputFileName);
@@ -618,15 +699,16 @@ def plotCostGraph(fieldSize:int, treasureWidth:float, treasureHeight:float, site
 # and should not have a suffix.
 # The graph is stored in outputFileName.png in the "graphs/<outputDir>" directory (or if outputDir
 # is not specified dir is used)
-# minFieldName is the name of the layout algorithm whose minimum value is used as the minimum
-# y axis value if zoom is True (unless minY is specified).
+# minFieldName is the name of the layout algorithm whose minimum value is used to calculate
+# the minimum y axis value if zoom is True (unless minY is specified).
 # If fieldNames is specified, it is the list of layout algorithm names to use, which
-# must each be featured in the data file.
+# must each be featured in the data file, otherwise the names is the first row of the
+# data file are used.
 # The data file is looked for in the dir subdirectory of the data directory.
 # Minimum and maximum values for the x axis and minimum value for the y axis may be specified.
 # Graph is shown in a window if showGraph is True.
-def plotSummaryExperiment(csvDataFileName:str, squareSize:float, siteArea:int, fieldSize:int, outputFileName:str, minFieldName:str = "random", fieldNames:list = None, maxHoles:int = None, dir:str ="", outputDir = None, minX:float = None, maxX:float = None, zoom = False, showGraph:bool = False, minY = None) -> None:
-    colours = list(mcolors.TABLEAU_COLORS.values());
+def plotSummaryExperiment(csvDataFileName:str, siteArea:int, rotation:float, fieldSize:int, outputFileName:str, minFieldName:str = "random", fieldNames:list = None, maxHoles:int = None, dir:str ="", outputDir = None, minX:float = None, maxX:float = None, zoom = False, showGraph:bool = False, minY = None, maxY = None) -> None:
+    #colours = list(mcolors.TABLEAU_COLORS.values());
     if dir != "":
         dir = dir + "/";
     csvFile = open("data/" + dir + csvDataFileName +".csv", 'r');
@@ -635,10 +717,7 @@ def plotSummaryExperiment(csvDataFileName:str, squareSize:float, siteArea:int, f
     logRatios = [];
     for row in lines:
         ratio = float(row["ratio"]);
-        if (ratio < 0):
-            logRatios.append(-math.log(-ratio, 10));
-        else:
-            logRatios.append(math.log(ratio, 10));
+        logRatios.append(math.log(ratio, 10));
     if (fieldNames == None):
         fieldNames = lines.fieldnames;
     else:
@@ -646,7 +725,8 @@ def plotSummaryExperiment(csvDataFileName:str, squareSize:float, siteArea:int, f
     data = [[] for n in range(len(fieldNames) - 1)];
     index = 0;
     fieldMinY = sys.maxsize;
-    maxY = 0;
+    dataMaxY = 0;
+
     if minX == None:
         minX = logRatios[0];
     if maxX == None:
@@ -658,57 +738,45 @@ def plotSummaryExperiment(csvDataFileName:str, squareSize:float, siteArea:int, f
         for row in lines:
             value = float(row[fieldNames[i]])
             data[index].append(value);
-            if zoom and logRatios[j] > minX and logRatios[j] < maxX:
+            if zoom and logRatios[j] >= minX and logRatios[j] <= maxX:
                 if fieldNames[i] == minFieldName:
                     if value < fieldMinY:
                         fieldMinY = value;
-                if value > maxY:
-                    maxY = value;
+                if value > dataMaxY:
+                    dataMaxY = value;
             j = j + 1;
         index = index + 1;
+    if maxY == None:
+        maxY = dataMaxY;
     if minY == None:
         minY = fieldMinY;
+        minY -= (maxY - minY)/5;
+    
+    if len(fieldNames) == 4:
+        colourArray = myColours[-3:];
+    else:
+        colourArray = myColours;
+    plt.rcParams['axes.prop_cycle'] = cycler(color=colourArray);
     fig = plt.figure();
     ax1 = fig.add_subplot(111);
     for i in range(len(fieldNames) - 1):
-        ax1.plot(logRatios, data[i], color=colours[i], label = HolesDictionary.lookup(fieldNames[i+1], True));
+    #    ax1.plot(logRatios, data[i], color=colours[i], label = HolesDictionary.lookup(fieldNames[i+1], True));
+        ax1.plot(logRatios, data[i], label = HolesDictionary.lookup(fieldNames[i+1], True));
   
-    ax1.legend();
-    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    ax1.set_xlabel("-log(ratio) for vertical elongation and log(ratio) for horizontal elongation");
+    # ax1.legend();
+    # ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
+    ax1.set_xlabel("log(ratio)");
     yLabel = "overall success";
     if (maxHoles != None):
         yLabel = yLabel + "\npercentage of oracle over " + str(maxHoles) + " test pits";
     ax1.set_ylabel(yLabel);
-    ax1.text(0.6, -0.15, 'horizontal elongation -->',
-        horizontalalignment='left',
-        verticalalignment='top',
-        transform=ax1.transAxes);
-    ax1.text(0.4, -0.15, '<-- vertical elongation',
-        horizontalalignment='right',
-        verticalalignment='top',
-        transform=ax1.transAxes);
-    i = 0;
-    while logRatios[i] < 0:
-        i = i + 1;
 
-    interval = logRatios[len(logRatios) - 1] / 3;
-    verticalXTicks = np.arange(logRatios[0], logRatios[i-1], interval);
-    horizontalXTicks = np.arange(interval, logRatios[len(logRatios) - 1] + interval, interval);
-    # add the central point
-    verticalXTicks = np.append(verticalXTicks, [0]);
-    xticks = np.concatenate((verticalXTicks, horizontalXTicks));
+    interval = logRatios[len(logRatios) - 1] / 6;
+    xticks = np.arange(logRatios[0], logRatios[len(logRatios) - 1] + interval, interval);
     ax1.set_xticks(xticks);
     xTickLabels = [];
     for i in range(len(xticks)):
-        if i == 0:
-            xTickLabels.append("-log(" + str(round(10**-xticks[i], 1)) + ")");
-        elif i == len(xticks) - 1:
-            xTickLabels.append("log(" + str(round(10**xticks[i], 1)) + ")");
-        elif xticks[i] < 0:
-            xTickLabels.append("-log(" + str(round(10**-xticks[i], 1)) + ")");
-        else:
-            xTickLabels.append("log(" + str(round(10**xticks[i], 1)) + ")");
+        xTickLabels.append("log(" + str(round(10**xticks[i], 1)) + ")");
 
     ax1.set_xticklabels(xTickLabels);
     if (minX != None):
@@ -722,16 +790,19 @@ def plotSummaryExperiment(csvDataFileName:str, squareSize:float, siteArea:int, f
         ax1.set_xlim(right = logRatios[len(logRatios) - 1]);
     if zoom:
         ax1.set_ylim(minY, maxY);
-    
-    fig.set_figwidth(8);
+    else:
+        ax1.set_ylim(top = maxY);
 
-    title = "Success of Layout Algorithms vs log(Site Ratio)\nField Size " + str(fieldSize) + ", Site Area " + str(siteArea) + "m\u00b2";
+    
+    fig.set_figwidth(6);
+    orientation = HolesDictionary.orientationLabel(rotation);
+    title = "Performance of Layout Algorithms vs log(Site Ratio)\n" + orientation + " Orientation\nField Size " + str(fieldSize) + "m x" + str(fieldSize) + "m, Site Area " + str(siteArea) + "m\u00b2";
     if maxHoles != None and maxHoles < 100:
-        title = "Success of Layout Algorithms vs log(Site Ratio) From 1 to " + str(maxHoles) + " test pits\nField Size " + str(fieldSize) + ", Site Area " + str(siteArea) + "m\u00b2";
+        title = "Performance of Layout Algorithms vs log(Site Ratio)\nFrom 1 to " + str(maxHoles) + " test pits\n" + orientation + " Orientation\nField Size " + str(fieldSize)  + "m x" + str(fieldSize) + "m, Site Area " + str(siteArea) + "m\u00b2";
 
     plt.title(title, fontsize = 12);
     fig.tight_layout();
-    plt.grid();
+    #plt.grid();
     plt.draw();
 
     if outputDir == None:
@@ -747,174 +818,141 @@ def plotSummaryExperiment(csvDataFileName:str, squareSize:float, siteArea:int, f
     plt.close(fig);
 
 
-# Plots a graph of crossover points of the layoutAlgorithms with the halton algorithm, which
-# data are in csvFileName (this must include the subdirectory of the data directory
-# in which the file exists, and have no sufix).
-# See generateCrossoverTableAndGraph() in LayoutExperiments.py for explanation of crossover points.
-# The graph is saved to a file named: "graphs/<csvFileName> graph.png".
-# This isn't used in the paper.
-def plotSummaryCrossoverGraph(csvFileName:str, layoutAlgorithms:list, title:str, showGraph:bool = False) -> None:
-    colours = list(mcolors.TABLEAU_COLORS.values());
-    siteAreas = [];
-    data = [];
-    dataIndex = 0;
-    for la in layoutAlgorithms:
-        csvFile = open("data/" + csvFileName +".csv", 'r');
-        lines = csv.DictReader(csvFile, delimiter=',', skipinitialspace=True);
-        data.append([]);
-        for row in lines:
-            if dataIndex == 0:
-                siteAreas.append(int(row["site area"]));
-            data[dataIndex].append(float(row[la]));
-        dataIndex = dataIndex + 1;
+# Plots a graph showing the overall success of each of the layoutAlgorithms against
+# the treasure rotation (from -90 to 90 degrees), for elongationRatio.
+# Each data point is a summary of a success experiment, as for the summary graphs.
+# Data must be in csvDataFileName as generated by generateRotationGraph() in LayoutExperiments.py.
+def plotRotationExperiment(csvDataFileName:str, fieldSize:int, siteArea:float, elongationRatio:float, layoutAlgorithms:list, maxHoles:int):
+    csvFile = open("data/" + HolesDictionary.getRotationDirectoryName() + "/" + csvDataFileName +".csv", 'r');
+    lines = csv.DictReader(csvFile, delimiter=',', skipinitialspace=True);
+    angles = [];
+    for row in lines:
+        angle = float(row["orientation"]);
+        angles.append(angle);
+
+    plt.rcParams['axes.prop_cycle'] = cycler(color=myColours);
     fig = plt.figure();
     ax1 = fig.add_subplot(111);
+
+    fig.set_figheight(5);
+    fig.set_figwidth(6.5);
+
+    data = [[] for n in range(len(layoutAlgorithms))];
+    for i in range(len(layoutAlgorithms)):
+        csvFile = open("data/" + HolesDictionary.getRotationDirectoryName() + "/" + csvDataFileName +".csv", 'r');
+        lines = csv.DictReader(csvFile, delimiter=',', skipinitialspace=True);
+        for row in lines:
+            data[i].append(float(row[layoutAlgorithms[i]]));
     for i in range(len(data)):
-        ax1.plot(siteAreas, data[i], color=colours[i], label = layoutAlgorithms[i]);
-    ax1.legend();
-    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-    ax1.set_xlabel("site area");
-    ax1.set_ylabel("crossover point");
+        ax1.plot(angles, data[i], label = HolesDictionary.lookup(layoutAlgorithms[i], True));
 
-    plt.title(title);
-    fig.tight_layout();
-    plt.draw();
-    plt.savefig("graphs/" + csvFileName + " graph.png");
-    if showGraph:
-        plt.show();
-    plt.close(fig);
-    
+    ax1.set_xlabel("orientation (degrees)");
+    yLabel = "overall success\npercentage of oracle over " + str(maxHoles) + " test pits";
+    ax1.set_ylabel(yLabel);
 
-# Helper function to get the log of the ratio for a treasure of siteArea and treasureHeight,
-# and the interpolated success rate of a specific number of holes (numHoles)
-# for success data in csvFileName which includes the path and a ".csv" suffix.
-def getLogRatioAndSuccess(csvFileName:str, numHoles:int, siteArea:int, treasureHeight:float) -> tuple[float, float]:
-    f = open(csvFileName, "r");
-    lines = csv.DictReader(f, delimiter=',', skipinitialspace=True);
-    i = 0;
-    width = siteArea/treasureHeight;
-    holes =[];
-    successes = [];
-    for row in lines:
-        holes.append(int(row["actualholes"]));
-        successes.append(float(row["successrate"]));
-    if successes[len(successes) - 1] != 100:
-        if holes[0] > numHoles or holes[len(holes) - 1] < numHoles:
-            print("error: data don't cover specific number of holes");
-    success = interpolateHoles(numHoles, holes, successes);
-    if treasureHeight > width:
-        return -math.log(treasureHeight/width, 10), success;
-    else:
-        return math.log(width/treasureHeight, 10), success;
-
-
-# Plots a graph of the success rate of various layoutAlgorithms for numHoles number of holes
-# versus the log of treasure elongation ratios (specified by treaure height in heights
-# and the siteArea).
-# Assumes the data for success of each algorithm at numHoles is in files in the dir subdirectory
-# of the "data" directory, for example generated by generateSpecificNumberOfHolesData() in
-# LayoutExperiments.
-# If minFieldName is specified, it is the name of the layout algorithm whose lowest success rate
-# will be the minimum y axis value.
-# The graph is saved in a file named:
-# "graphs/<dir>/<numHoles> holes fieldsize <fieldSize> siteArea<siteArea>.png".
-# This was not used in the paper.
-def plotSpecificNumberOfHoles(fieldSize:int, siteArea:int, heights:list, numHoles:int, layoutAlgorithms:list, dir:str = "specificholes", minFieldName:str = None) -> None:
-    colours = list(mcolors.TABLEAU_COLORS.values());
-
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
-
-    fileStart = "data/" + dir + "/"
-    fileEnd = " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + " holes" + str(numHoles) + ".csv";
-    colourIndex = 0;
-    minY = 100
-    maxY = 0;
-    for la in layoutAlgorithms:
-        logRatios = [];
-        successes = [];
-        for h in heights:
-            height = round(h, 2);
-            width = round(siteArea/h, 2);
-            fileName = fileStart + str(width) + "x" + str(height) + "rectangle " + la + fileEnd;
-            logRatio, success = getLogRatioAndSuccess(fileName, numHoles, siteArea, h);
-            logRatios.append(logRatio);
-            successes.append(success);
-            if la == minFieldName and success < minY:
-                minY = success;
-            if success > maxY:
-                maxY =success;
-
-        ax1.plot(logRatios, successes, label = la, color = colours[colourIndex]);
-        colourIndex = colourIndex + 1;
-    if minFieldName != None:
-        ax1.set_ylim(bottom = minY);
-
-    i = 0;
-    while logRatios[i] < 0:
-        i = i + 1;
-    interval = logRatios[len(logRatios) - 1] / 3;
-    verticalXTicks = np.arange(logRatios[0], logRatios[i-1], interval);
-    horizontalXTicks = np.arange(interval, logRatios[len(logRatios) - 1] + interval, interval);
-    verticalXTicks = np.append(verticalXTicks, [0]);
-    xticks = np.concatenate((verticalXTicks, horizontalXTicks));
+    xticks = np.arange(-90, 90+1, 30);
     ax1.set_xticks(xticks);
-    xTickLabels = [];
-    for i in range(len(xticks)):
-        if xticks[i] < 0:
-            xTickLabels.append("-log(" + str(round(10**-xticks[i], 1)) + ")");
-        else:
-            xTickLabels.append("log(" + str(round(10**xticks[i], 1)) + ")");
-                               
-    ax1.set_xticklabels(xTickLabels);
-
-    ax1.set_xlabel("-log(ratio) for vertical elongation and log(ratio) for horizontal elongation");
-    ax1.set_ylabel("success rate");
-    ax1.text(0.6, -0.15, 'horizontal elongation -->',
-        horizontalalignment='left',
-        verticalalignment='top',
-        transform=ax1.transAxes);
-    ax1.text(0.4, -0.15, '<-- vertical elongation',
-        horizontalalignment='right',
-        verticalalignment='top',
-        transform=ax1.transAxes);
-    ax1.legend();
-    ax1.legend(bbox_to_anchor=(1.05, 1), loc='upper left');
+    plt.title("Performance of Layout Algorithms vs Site Orientation\nElongation Ratio " + str(elongationRatio) + "\nField Size " + str(fieldSize) + "m x " + str(fieldSize) + "m, Site Area " + str(siteArea) + "m\u00b2", fontsize = 12);
     plt.grid();
 
-    plt.title("Success of layout algorithms for exactly " + str(numHoles) + " test pits\nField size " + str(fieldSize) +"m x " + str(fieldSize) + "m, site area " + str(siteArea) + "m\u00b2");
-    fig.set_figwidth(8);
     fig.tight_layout();
 
-    # save the graph, creating the graphs directory if necessary
-    outFileName = "graphs/" + dir + "/" + str(numHoles) + " holes fieldsize " + str(fieldSize) + " siteArea" + str(siteArea) + ".png";
-    outputFile = Path(outFileName);
+    outputFN = "graphs/" + HolesDictionary.getRotationDirectoryName() + "/rotation summary ratio" + str(elongationRatio) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".png"
+    outputFile = Path(outputFN);
     outputFile.parent.mkdir(exist_ok=True, parents=True)
-    plt.savefig(outFileName);
-    plt.close(fig);
+    plt.savefig(outputFN);
+
+# Plots an experiment with randomised treasure specifications for the layoutAlgorithms.
+# Data are assumed to exist in the randomtreasure subdirectory of the data directory.
+# def plotRandomisedTreasureExperiment(fieldSize:int, layoutAlgorithms:list, minX = None, maxX = None, addToFile:str = ""):
+#     plt.rcParams['axes.prop_cycle'] = cycler(color=myColours);
+#     fig = plt.figure();
+#     ax1 = fig.add_subplot(111);
+
+#     minY = sys.maxsize;
+#     maxY = 0;
+#     for la in layoutAlgorithms:
+#         fileName = "data/" + HolesDictionary.getRandomisedTreasureDirectoryName() + "/randomisedtreasure " + la + " fieldsize" + str(fieldSize) + ".csv";
+#         holes = [];
+#         successes = [];
+#         csvFile = open(fileName, 'r');
+#         lines = csv.DictReader(csvFile, delimiter=',', skipinitialspace=True);
+#         for row in lines:
+#             hole = int(row["actualholes"]);
+#             holes.append(hole);
+#             successRate = float(row["successrate"]);
+#             successes.append(successRate);
+#             if (minX == None or hole > minX) and (maxX == None or hole < maxX):
+#                 if successRate < minY:
+#                     minY = successRate;
+#                 if successRate > maxY:
+#                     maxY = successRate;
+#             if maxY > 99:
+#                 maxY = 99;
+        
+#         ax1.plot(holes, successes, label = HolesDictionary.lookup(la, True));
+    
+#     if minX == None:
+#         minX = 0;
+#     if minX != None:
+#         ax1.set_xlim(left = minX);
+#     if maxX != None:
+#         ax1.set_xlim(right = maxX);
+#     #maxY = math.ceil(maxY / 5) * 5;
+#     ax1.set_ylim(minY, maxY);
+    
+#     plt.title("Randomised Site Area, Orientation and Length\nField Size " + str(fieldSize) + "m x " + str(fieldSize) + "m", fontsize = 12);
+#     plt.grid();
+#     fig.tight_layout();
+
+#     outputFN = "graphs/" + HolesDictionary.getRandomisedTreasureDirectoryName() + "/randomisedsite fieldsize" + str(fieldSize);
+#     if addToFile != "":
+#         outputFN = outputFN + " " + addToFile;
+#     outputFN = outputFN + ".png";
+#     outputFile = Path(outputFN);
+#     outputFile.parent.mkdir(exist_ok=True, parents=True)
+#     plt.savefig(outputFN);
+
+# Plots an experiment with randomised treasure specifications for the layoutAlgorithms.
+# Data are assumed to exist in the randomtreasure subdirectory of the data directory.
+def plotRandomisedTreasureExperiment(fieldSize:int, layoutAlgorithms:list, minX = None, maxX = None, addToFile = ""):
+    fileStart = "data/" + HolesDictionary.getRandomisedTreasureDirectoryName() + "/randomisedtreasure ";
+    fileEnd = " fieldsize" + str(fieldSize) + ".csv";
+    title = "Randomised Site Area, Orientation and Length\nField Size " + str(fieldSize) + "m x " + str(fieldSize) + "m";
+    if addToFile != "":
+        addToFile = " " + addToFile;
+    outputFileName = "graphs/" + HolesDictionary.getRandomisedTreasureDirectoryName() + "/randomisedsite fieldsize" + str(fieldSize) + addToFile;
+    _plotSuccessExperiment(fileStart, fileEnd, layoutAlgorithms, title, outputFileName, minX = minX, maxX = maxX, capY = 99);
 
 
 # Generates data for the crossover table. csvFileName should contain
-# crossover points as generated by generateCrossoverTableAndGraph() in
-# LayoutExperiments.py, specifying either vertical elongation or horizontal
+# crossover points as generated by generateCrossoverTable() in
+# LayoutExperiments.py, specifying vertical elongation and horizontal
 # elongation crossover points. See that function for explanation of crossover
 # points. The file name should include the subdirectory of the data directory
 # and no suffix.
-# Data is returned in a list of lists.
-# The first sub-list is "site area" and the names of the layout algorithms
-# (the headings of the table). Each other sub-list begins with a site area and followed by
-# the crossover points for each layout algorithm at this site area.
-# variable is the name of the first column in csvFileName, and can be "site area" or "field size"
+# Data are returned in a list of lists.
+# variable can be "site area", "field size" or "rotation" (only "rotation" is
+# used in the article and the others may no longer work).
+# The first sub-list is that variable, followed by the names of the layout algorithms
+# (the headings of the table).
+# Each other sub-list begins with a value for the variable field, then
+# the crossover points for each layout algorithm for that value.
 def createCrossoverTableData(csvFileName:str, layoutAlgorithms:list, variable:str) -> list:
 
     if variable == "site area":
         data = [
             ["site area (m\u00b2)"]
         ];
-    else:
+    elif variable == "field size":
         data = [
             ["field size"]
         ];
+    else:
+        data = [
+            ["Orientation\n(degrees)"]
+        ];
+    
     for la in layoutAlgorithms:
         data[0].append(HolesDictionary.lookup(la, True) + "\n(ratio)");
     
@@ -924,27 +962,26 @@ def createCrossoverTableData(csvFileName:str, layoutAlgorithms:list, variable:st
     for row in lines:
         if variable == "site area":
             data.append([row[variable]]);
-        else:
+        elif variable == "field size":
             data.append([row[variable] + "m x " + row[variable] + "m"]);
+        else:
+            data.append([row[variable]]);
         for la in layoutAlgorithms:
             data[dataIndex].append(round(float(row[la]), 2));
         dataIndex = dataIndex + 1;
     return data;
 
 
-# Generates a crossover table. See generateCrossoverTableAndGraph() in LayoutExperiments.py
+# Generates a crossover table. See generateCrossoverTable() in LayoutExperiments.py
 # for explanation of crossover points. csvFileName should refer to a file generated
 # by that function, and should include the subdirectory of the data directory
 # in which it lives and no suffix.
 # figwidth and figheight are table dimensions, and cellHeight can be specified.
-# Table title says "vertical" crossover points unless vertical is False, in which
-# case it says "horizontal".
-# variable is the name of the first column in csvFileName, and can be "site area" or "field size",
-# and the corresponding table is produced (i.e. varying site area or varying field size).
 # The table is saved in a file named: "graphs/<csvFileName> table.png".
 # Also saves the data to a csv file with the same name but a ".csv" suffix.
-def plotSummaryCrossoverTable(csvFileName:str, layoutAlgorithms:list, figwidth:float, figheight:float, variable:str = "site area", cellHeight:float = -1, vertical:bool = True, showGraph:bool = False):
-    
+def plotSummaryCrossoverTable(csvFileName:str, layoutAlgorithms:list, siteArea:int, figwidth:float, figheight:float, cellHeight:float = -1, showGraph:bool = False):
+
+    variable = "rotation"
     data = createCrossoverTableData(csvFileName, layoutAlgorithms, variable);
 
     fig, ax = plt.subplots(figsize=(figwidth, figheight));
@@ -959,15 +996,8 @@ def plotSummaryCrossoverTable(csvFileName:str, layoutAlgorithms:list, figwidth:f
         for (row, col), cell in table.get_celld().items():
             cell.set_height(cellHeight);
     table.scale(1.2, 1)
-    
-    if vertical:
-        orientation = "Vertical";
-    else:
-        orientation = "Horizontal"
-    if variable == "site area":
-        plt.title("Site Elongation Ratio at which Layout Algorithms Fall Below Halton Success Rate\nfor " + orientation + " Elongation, Field Size 100m x 100m", pad=-40);
-    else:
-        plt.title("Site Elongation Ratio at which Layout Algorithms Fall Below Halton Success Rate\nfor " + orientation + " Elongation, Site Area 100m\u00b2", pad=-40);
+
+    plt.title("Site Elongation Ratio at which Layout Algorithms Fall Below Halton Success Rate\nSite Area " + str(siteArea) + "m\u00b2, " + "Field Size 100m x 100m", pad=-40);
     plt.tight_layout();
 
     plt.savefig("graphs/" + csvFileName + " table.png");

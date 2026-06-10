@@ -19,81 +19,96 @@
 
 # This is a main file for the Holes project, for the Layout Matters article.
 # It contains code to run Experiments on the ExperimentRunner implemented
-# in Holes.py. It also contains code to plot graphs and tables using Plotter.py.
+# in ExperimentRunner.py. It also contains code to plot graphs and tables using Plotter.py.
 # Tables contain results of data analysis using Tables.py.
 
-# Data produced is stored in subdirectories of the "data" directory and graphs and tables
+# Data produced are stored in subdirectories of the "data" directory and graphs and tables
 # are stored in subdirectories of the "graphs" directory.
 
-from Holes import Experiment, ExperimentRunner, Field, HexagonalLikePlayer, HaltonPlayer, RandomPlayer, HexagonalPlayer
-from Tables import maximumDifferenceInSuccess, breakEvenRatios, areaUnderCurve, crossoverPoints, getMaximumDifferenceInSuccessLayout
-from Experiments import BasicExperiment
-from Plotter import plotExperiment, plotTable, plotSummaryExperiment, plotSummaryCrossoverTable, plotPolygonSuccessExperiment, plotSuccessExperiment, plotSummaryCrossoverGraph, plotSpecificNumberOfHoles, plotHolesForSuccessRatesTable, plotPolygonHolesForSuccessRatesTable, plotCostGraph
+
+from ExperimentRunner import ExperimentRunner
+from Field import Field
+from Players import HexagonalLikePlayer, HaltonPlayer, RandomPlayer, HexagonalPlayer
+from Tables import maximumDifferenceInSuccess, breakEvenRatios, areaUnderCurve, crossoverPoint, getMaximumDifferenceInSuccessLayout, getMaximumDifferenceInSuccessLayoutFromFiles
+from SizeMattersExperiments import BasicExperiment
+from Treasure import TreasureManager, RectangularTreasureManager, PolygonTreasureManager, RandomisedTreasureManager
+from Plotter import plotTable, plotSummaryExperiment, plotSummaryCrossoverTable, plotPolygonSuccessExperiment, plotSuccessExperiment, plotHolesForSuccessRatesTable, plotPolygonHolesForSuccessRatesTable, plotCostGraph, plotRotationExperiment, createLegend, plotRandomisedTreasureExperiment
+from HolesDictionary import HolesDictionary
 from rich.progress import Progress, BarColumn
 from pathlib import Path
 import math
-import threading
 import multiprocessing
 import traceback
-import time
-import csv
 from datetime import datetime
-import os
 import sys
+import random
 
 
-# A basic layout experiment, using a HexagonalLikePlayer
+# A base Experiment for Layout Matters experiments
 class BasicLayoutExperiment(BasicExperiment):
 
-    def __init__(self):
-        super().__init__();
+    def __init__(self, treasureManager:TreasureManager):
+        super().__init__(treasureManager);
         self.mNumRepeats = globalNumRepeats;
-        self.mSmallNumHolesNumRepeats = 10000;
+        self.mSmallNumHolesNumRepeats = globalVeryHighNumRepeats;
         self.mSmallNumHolesNumRepeatsCutoff = 40;
 
 
 # DEFINE EXPERIMENT SUBCLASSES FOR EACH LAYOUT ALGORITHM
 
+class HexagonalLikeExperiment(BasicLayoutExperiment):
+    def __init__(self, treasureManager:TreasureManager):
+        super().__init__(treasureManager);
+
+    def getPlayer(self, field:Field, holes:int):
+        return HexagonalLikePlayer(field, self.mHoleSize, holes, self.mLRBorder, False);
+
+
 class StaggerXYExperiment(BasicLayoutExperiment):
 
-    def __init__(self):
-        super().__init__();
-        self.mStaggerY = True;
+    def __init__(self, treasureManager:TreasureManager):
+        super().__init__(treasureManager);
     
     def getPlayer(self, field:Field, holes:int):
         return HexagonalLikePlayer(field, self.mHoleSize, holes, self.mLRBorder, True);
 
 class HaltonExperiment(BasicLayoutExperiment):
 
-    def __init__(self):
-        super().__init__();
+    def __init__(self, treasureManager:TreasureManager):
+        super().__init__(treasureManager);
         self.mSmallNumHolesIncrement = 3;
         self.mSmallNumHolesIncrementCutoff = 30;
+        self.mHoleIncrement = 10;
 
     def getPlayer(self, field:Field, holes:int):
-        return HaltonPlayer(field, self.mHoleSize, holes, self.mLRBorder);
+        # set numpy random number generator seed
+        seed = random.randint(1, sys.maxsize);
+        return HaltonPlayer(field, self.mHoleSize, holes, seed, self.mLRBorder);
 
 class RandomExperiment(BasicLayoutExperiment):
 
-    def __init__(self):
-        super().__init__();
+    def __init__(self, treasureManager:TreasureManager):
+        super().__init__(treasureManager);
         self.mSmallNumHolesIncrement = 3;
         self.mSmallNumHolesIncrementCutoff = 30;
+        self.mHoleIncrement = 10;
 
     def getPlayer(self, field:Field, holes:int):
         return RandomPlayer(field, self.mHoleSize, holes, self.mLRBorder);
 
 class RandomisedStaggerXYExperiment(BasicLayoutExperiment):
 
-    def __init__(self, stdDevDivisor:int):
-        super().__init__();
-        self.mStdDeviationDivisor = stdDevDivisor;
+    def __init__(self, treasureManager:TreasureManager, stdDevDivisor:int):
+        super().__init__(treasureManager);
+        self.stdDeviationDivisor = stdDevDivisor;
 
     def getPlayer(self, field:Field, holes:int):
-        return HexagonalLikePlayer(field, self.mHoleSize, holes, self.mLRBorder, True, True, self.mStdDeviationDivisor);
+        return HexagonalLikePlayer(field, self.mHoleSize, holes, self.mLRBorder, True, True, self.stdDeviationDivisor);
 
 
 class HexExperiment(BasicLayoutExperiment):
+    def __init__(self, treasureManager:TreasureManager):
+        super().__init__(treasureManager);
 
     def getPlayer(self, field:Field, holes:int):
         return HexagonalPlayer(field, self.mHoleSize, holes);
@@ -102,384 +117,161 @@ class HexExperiment(BasicLayoutExperiment):
 # SET SOME GLOBAL VARIABLES
 
 # default number of simulation interations for each number of holes
-globalHighNumRepeats = 10000;
-globalNumRepeats = 3000;
+globalVeryHighNumRepeats = 15000;
+globalHighNumRepeats = 8000;
+globalNumRepeats = 4000;
 
 # subdirectories of the data and graphs directories in which to store experiment results
-summaryDirectory = "summary";
-drillDownDirectory = "drilldown";
-realWorldDirectory = "realworld";
-largeRatioDirectory = "largeratio";
-smallHolesDirectory = "smallnumholes"
-specificHolesDirectory = "specificholes"
-circularDirectory = "circular";
+summaryDirectory = HolesDictionary.getSummaryDirectoryName();
+successDirectory = HolesDictionary.getSuccessDirectoryName();
+caseStudiesDirectory = HolesDictionary.getCaseStudiesDirectoryName();
+largeRatioDirectory = HolesDictionary.getLargeRatioDirectoryName();
+smallHolesDirectory = HolesDictionary.getSmallNumHolesDirectoryName();
+circularDirectory = HolesDictionary.getCircularDirectoryName();
+rotationDirectory = HolesDictionary.getRotationDirectoryName();
+randomisedTreasureDirectory = HolesDictionary.getRandomisedTreasureDirectoryName();
 
 
 # FUNCTIONS TO RUN EXPERIMENTS
 
-# This first group of functions runs experiments using the layout algorithm indicated in the function name.
-# The experiment generates success data for the given algorithm over a range of number of holes
-# (from 1 to the maximum number, or until 100% success rate is reached) using the ExperimentRunner
-# in Holes.py. Data is stored in a file:
-# "<treasureWidth>x<treasureHeight>rectangle <algorithm name> fieldsize<fieldSize> siteArea<siteArea>.csv"
-# in the dir subdirectory of the data directory.
-# The treasure is rectangular of dimensions treasureWidth x treasureHeight.
+# Runs an Experiment on an ExperimentRunner.
+# Success data are generated for the given experiment parameters (including the
+# Player/layout algorithm to use and a TreasureManager which provides the Treasure to use)
+# over a range of number of holes.
+# See the ExperimentRunner class for more details.
 # The field is a square of size fieldSize x fieldSize.
-# The site (aka treasure) area is siteArea (set separately to treasure dimensions due to rounding of those
-# dimensions).
 # Optionally, the number of holes at which to start the experiment is startHoles.
 # Optionally, the maximum number of holes to use in the experiment is maxHoles.
 # Optionally, the exact number of holes to use in the experiment is numHoles (usually an experiment
-# will run from 1 hole to the maximum number but some experiments only consider a single number of holes).
+# will run from 1 hole to the maximum number but experiments could consider only a single number of holes).
 # Optionally, the number of simulation iterations to run for each number of holes is numRepeats.
-# Optionally, the subdirectory of the data directory where result data is stored is dir.
-# Optionally, addToFileName is a string added to the end of the name of the data file.
+# Optionally the number of simulation iterations to run for small numbers of holes is smallNumHolesNumRepeats.
 # Optionally, printExperimentHoles is the number of holes to use when printing the experiment field.
 # NOTE that when printExperimentHoles is defined, the experiment will not be run, only printed.
-# Some functions allow setting of smallHolesNumRepeats, the number of simulation iterations
-# to run for small numbers of holes.
-
-def runElongatedHexLike(fieldSize : int, treasureWidth:float, treasureHeight:float, siteArea:int, startHoles:int = None, maxHoles:int = None, numHoles:int = None, numRepeats:int = globalNumRepeats, dir:str = summaryDirectory, addToFileName:str = "", printExperimentHoles:bool = None):
-    experiment = BasicLayoutExperiment();
+def doRunExperiment(fieldSize:int, experiment:BasicLayoutExperiment, outputFileName:str, startHoles:int = None, maxHoles:int = None, numHoles:int = None, numRepeats:int = globalNumRepeats, smallNumHolesNumRepeats:int = None, printExperimentHoles = None) -> None:
     experiment.mFieldSize = fieldSize;
-    experiment.mTreasureShape="rectangle"
-    experiment.mTreasureWidth = treasureWidth;
-    experiment.mTreasureHeight = treasureHeight;
-    experiment.mNumRepeats = numRepeats;
     experiment.mNumRepeats = numRepeats;
     if maxHoles != None:
         experiment.mMaxHoles = maxHoles;
+    if startHoles != None:
+        experiment.mStartHoles = startHoles;
     if numHoles != None:
         experiment.mStartHoles = numHoles;
         experiment.mMaxHoles = numHoles;
-    if startHoles != None:
-        experiment.mStartHoles = startHoles;
-    if addToFileName != "":
-        addToFileName = " " + addToFileName;
-    twidth = round(treasureWidth, 2);
-    theight = round(treasureHeight, 2);
-    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle hexlike fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName +  ".csv";
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
-
-def runElongatedHex(fieldSize : int, treasureWidth:float, treasureHeight:float, siteArea:int, numRepeats:int = globalNumRepeats, dir:str = "", addToFileName:str = "", printExperimentHoles:bool = None):
-    experiment = HexExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mTreasureShape="rectangle"
-    experiment.mTreasureWidth = treasureWidth;
-    experiment.mTreasureHeight = treasureHeight;
-    experiment.mNumRepeats = numRepeats;
-    if addToFileName != "":
-        addToFileName = " " + addToFileName;
-    twidth = round(treasureWidth, 2);
-    theight = round(treasureHeight, 2);
-    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle hex fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
-
-def runElongatedStaggerXY(fieldSize: int, treasureWidth:float, treasureHeight:float, siteArea:int, startHoles:int = None, maxHoles:int = None, numHoles:int = None, numRepeats:int = globalNumRepeats, dir:str = summaryDirectory, addToFileName:str = "", printExperimentHoles:bool = None):
-    experiment = StaggerXYExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mTreasureShape="rectangle"
-    experiment.mTreasureWidth = treasureWidth;
-    experiment.mTreasureHeight = treasureHeight;
-    experiment.mStaggerY = True;
-    experiment.mNumRepeats = numRepeats;
-    if maxHoles != None:
-        experiment.mMaxHoles = maxHoles;
-    if numHoles != None:
-        experiment.mStartHoles = numHoles;
-        experiment.mMaxHoles = numHoles;
-    if startHoles != None:
-        experiment.mStartHoles = startHoles;
-    if addToFileName != "":
-        addToFileName = " " + addToFileName;
-    twidth = round(treasureWidth, 2);
-    theight = round(treasureHeight, 2);
-    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle staggerXY fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
-
-def runElongatedHalton(fieldSize: int, treasureWidth:float, treasureHeight:float, siteArea:int, startHoles:int = None, maxHoles:int = None, numHoles:int = None, addToFileName:str = "", numRepeats:int = globalNumRepeats, smallNumHolesNumRepeats:int = None, dir:str = summaryDirectory, printExperimentHoles:bool = None):
-    experiment = HaltonExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mHoleIncrement = 10;
-    experiment.mTreasureShape="rectangle"
-    experiment.mTreasureWidth = treasureWidth;
-    experiment.mTreasureHeight = treasureHeight;
-    experiment.mNumRepeats = numRepeats;
     if smallNumHolesNumRepeats != None:
         experiment.mSmallNumHolesNumRepeats = smallNumHolesNumRepeats;
-    if maxHoles != None:
-        experiment.mMaxHoles = maxHoles;
-    if numHoles != None:
-        experiment.mStartHoles = numHoles;
-        experiment.mMaxHoles = numHoles;
-    if startHoles != None:
-        experiment.mStartHoles = startHoles;
-    if addToFileName != "":
-        addToFileName = " " + addToFileName;
-    twidth = round(treasureWidth, 2);
-    theight = round(treasureHeight, 2);
-    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle halton fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
+
+    experiment.mOutputFileName = outputFileName;
     runner = ExperimentRunner(experiment);
     if printExperimentHoles != None:
         runner.printExperiment(printExperimentHoles);
     else:
         runner.runExperiment(printData=False);
 
-def runElongatedRandom(fieldSize: int, treasureWidth:float, treasureHeight:float, siteArea:int, startHoles:int = None, maxHoles:int = None, numHoles:int = None, addToFileName:str = "", numRepeats:int = globalNumRepeats, smallNumHolesNumRepeats:int = None, dir:str = summaryDirectory, printExperimentHoles:bool = None):
-    experiment = RandomExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mHoleIncrement = 10;
-    experiment.mTreasureShape="rectangle"
-    experiment.mTreasureWidth = treasureWidth;
-    experiment.mTreasureHeight = treasureHeight;
-    experiment.mNumRepeats = numRepeats;
-    if smallNumHolesNumRepeats != None:
-        experiment.mSmallNumHolesNumRepeats = smallNumHolesNumRepeats;
-    if maxHoles != None:
-        experiment.mMaxHoles = maxHoles;
-    if numHoles != None:
-        experiment.mStartHoles = numHoles;
-        experiment.mMaxHoles = numHoles;
-    if startHoles != None:
-        experiment.mStartHoles = startHoles;
+# Return the csv filename in which to store success data for an experiment using RectangularTreasure.
+# The file is called:
+# "<longSide>x<shortSide>@<rotation>rectangle <layoutAlgorithm> fieldsize<fieldSize> siteArea<siteArea>.csv"
+# in the dir subdirectory of the data directory.
+def getRectangularFileName(fieldSize:int, siteArea:int, layoutAlgorithm:str, longSide:float, shortSide:float, rotation:float, dir:str, addToFileName:str = "") -> str:
+    tshort = round(shortSide, 2);
+    tlong = round(longSide, 2);
     if addToFileName != "":
         addToFileName = " " + addToFileName;
-    twidth = round(treasureWidth, 2);
-    theight = round(treasureHeight, 2);
-    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle random fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
+    return dir + "/" + str(tlong) + "x" + str(tshort) + "@" + str(rotation) + "rectangle " + layoutAlgorithm + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName +  ".csv";
+
+# Return the csv filename in which to store success data for an experiment using a PolygonTreasure.
+# The file is called "casestudypolygon <description>@<rotation> <layoutAlgorithm> fieldsize<fieldSize>.csv"
+# in the dir subdirectory of the data directory.
+def getPolygonFileName(fieldSize:int, layoutAlgorithm:str, description:str, rotation:float, dir:str):
+    return dir + "/casestudypolygon " + description + "@" + str(rotation) + " " + layoutAlgorithm + " fieldsize" + str(fieldSize) + ".csv"
+
+# Return the csv filename in which to store success data for an experiment using a randomised
+# RectangularTreasure. The file is called:
+# "randomisedtreasure <layoutAlgorithm> fieldsize<fieldSize>.csv"
+# in the dir subdirectory of the data directory.
+def getRandomisedTreasureFileName(fieldSize:int, layoutAlgorithm:str, dir:str):
+    return dir + "/randomisedtreasure " + layoutAlgorithm + " fieldsize" + str(fieldSize) + ".csv";
+
+# Returns an Experiment for the given layoutAlgorithm and TreasureManager.
+def getExperiment(treasureManager:TreasureManager, layoutAlgorithm:str) -> BasicLayoutExperiment:
+    if layoutAlgorithm == "hexlike":
+        experiment = HexagonalLikeExperiment(treasureManager);
+    elif layoutAlgorithm == "staggerXY":
+        experiment = StaggerXYExperiment(treasureManager);
+    elif layoutAlgorithm == "randomisedStaggerXY sd8":
+        experiment = RandomisedStaggerXYExperiment(treasureManager, 8);
+    elif layoutAlgorithm == "random":
+        experiment = RandomExperiment(treasureManager);
+    elif layoutAlgorithm == "halton":
+        experiment = HaltonExperiment(treasureManager);
+    elif layoutAlgorithm == "hex":
+        experiment = HexExperiment(treasureManager);
     else:
-        runner.runExperiment(printData=False);
+        print("unknown layout algorithm:", layoutAlgorithm);
+        exit(1);
+    return experiment;
 
-# stdDevFactor is the value by which the distance between holes is divided to give one standard deviation
-# for randomisation of hole positions. See StaggeredPlayer.doStaggeredLayout() in Holes.py for
-# more information.
-def runRandomisedStaggerXY(fieldSize:int, treasureWidth:float, treasureHeight:float, stdDevFactor:int, siteArea:int, startHoles:int = None, maxHoles:int = None, numHoles:int = None, addToFileName:str = "", numRepeats:int = globalNumRepeats, smallNumHolesNumRepeats:int = None, dir:str = summaryDirectory, printExperimentHoles:bool = None):
-    experiment = RandomisedStaggerXYExperiment(stdDevFactor);
-    experiment.mFieldSize = fieldSize;
-    experiment.mTreasureShape = "rectangle"
-    experiment.mTreasureWidth = treasureWidth;
-    experiment.mTreasureHeight = treasureHeight;
-    experiment.mStaggerY = True;
-    experiment.mRandomise = True;
-    experiment.mNumRepeats = numRepeats;
-    if smallNumHolesNumRepeats != None:
-        experiment.mSmallNumHolesNumRepeats = smallNumHolesNumRepeats;
-    if maxHoles != None:
-        experiment.mMaxHoles = maxHoles;
-    if numHoles != None:
-        experiment.mStartHoles = numHoles;
-        experiment.mMaxHoles = numHoles;
-    if startHoles != None:
-        experiment.mStartHoles = startHoles;
-    experiment.mStdDeviationDivisor = stdDevFactor;
-    if addToFileName != "":
-        addToFileName = " " + addToFileName;
-    twidth = round(treasureWidth, 2);
-    theight = round(treasureHeight, 2);
-    experiment.mOutputFileName = dir + "/" + str(twidth) + "x" + str(theight) + "rectangle randomisedStaggerXY sd" + str(stdDevFactor) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + addToFileName + ".csv";
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
-
-
-# This next group of functions also runs experiments using the layout algorithm indicated in the function name.
-# The treasure is a polygon described by polygonFile which must be a zip file containing files
-# in the shapefile format. See https://en.wikipedia.org/wiki/Shapefile .
-# The given shapefile data must define exactly one polygon and no other constructs.
-# The polygon is assumed to be vertically oriented. If rotate is True it is rotated to be
-# horizontally oriented.
-# The success data for an experiment is stored in a file:
-# "<orientation>polygon <algorithm name> fieldsize<fieldSize>.csv", where orientation is "vertical"
-# or "horizontal", by default in the realWorldDirectory subdirectory of the data directory
-# (see global variables above).
-# The field is of size fieldSize.
-# Optionally, printExperimentHoles is the number of holes to use when printing the experiment field.
+# Run an experiment using the given layoutAlgorithm with a RectangularTreasure of the given
+# longSide, shortSide, and rotation. Places results in the dir subdirectory of the data
+# directory (see getRectangularFileName() above for file name details).
+# The number of repeats to use is numRepeats and smallNumHolesNumRepeats for smaller numbers
+# of holes. printExperimentHoles is the number of holes to use when printing the experiment field.
 # NOTE that when printExperimentHoles is defined, the experiment will not be run, only printed.
-# Optionally, the subdirectory of the data directory where result data is stored is dir
+def runRectangularExperiment(layoutAlgorithm:str, longSide:float, shortSide:float, rotation:float, fieldSize:int, siteArea:int, dir:str, numRepeats = globalNumRepeats, smallNumHolesNumRepeats = None, printExperimentHoles = None):
+    treasureManager = RectangularTreasureManager(longSide, shortSide, rotation);
+    fileName = getRectangularFileName(fieldSize, siteArea, layoutAlgorithm, longSide, shortSide, rotation, dir);
+    experiment = getExperiment(treasureManager, layoutAlgorithm);
+    if smallNumHolesNumRepeats != None:
+        experiment.mSmallNumHolesNumRepeats = smallNumHolesNumRepeats;
+    doRunExperiment(fieldSize, experiment, fileName, numRepeats = numRepeats, printExperimentHoles = printExperimentHoles);
 
-def runPolygonHexLike(fieldSize: int, polygonFile:str, rotate:bool = False, dir:str = realWorldDirectory, printExperimentHoles:bool = None):
-    experiment = BasicLayoutExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mNumRepeats = globalHighNumRepeats;
-    experiment.mTreasureShape="polygon"
-    experiment.mPolygonFile = polygonFile;
-    experiment.mRotatePolygon = rotate;
-    if rotate:
-        experiment.mOutputFileName = "horizontalpolygon hexlike fieldsize" + str(fieldSize) + ".csv";
-    else:
-        experiment.mOutputFileName = "verticalpolygon hexlike fieldsize" + str(fieldSize) + ".csv";
-    experiment.mOutputFileName = dir + "/" + experiment.mOutputFileName;
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
+# Run an experiment using the given layoutAlgorithm with a PolygonTreasure with the given polygonFile
+# defining the polygon shape (in shapefile format), description, and rotation. The polygon in the
+# shapefile is assumed to be oriented vertically. Place results in the
+# dir subdirectory of the data directory. The number of repeats to use is numRepeats.
+# printExperimentHoles is the number of holes to use when printing the experiment field.
+# NOTE that when printExperimentHoles is defined, the experiment will not be run, only printed.
+def runPolygonExperiment(layoutAlgorithm:str, polygonFile:str, description:str, rotation:float, fieldSize:int, dir:str, numRepeats = globalNumRepeats, printExperimentHoles = None):
+    treasureManager = PolygonTreasureManager(polygonFile, rotation);
+    fileName = getPolygonFileName(fieldSize, layoutAlgorithm, description, rotation, dir);
+    experiment = getExperiment(treasureManager, layoutAlgorithm);
+    doRunExperiment(fieldSize, experiment, fileName, numRepeats = numRepeats, printExperimentHoles = printExperimentHoles);
 
-def runPolygonRandom(fieldSize:int, polygonFile:str, rotate:bool = False, dir:str = realWorldDirectory, printExperimentHoles:bool = None):
-    experiment = RandomExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mHoleIncrement = 10;
-    experiment.mNumRepeats = globalHighNumRepeats;
-    experiment.mTreasureShape="polygon"
-    experiment.mPolygonFile = polygonFile;
-    experiment.mRotatePolygon = rotate;
-    if rotate:
-        experiment.mOutputFileName = "horizontalpolygon random fieldsize" + str(fieldSize) + ".csv";
-    else:
-        experiment.mOutputFileName = "verticalpolygon random fieldsize" + str(fieldSize) + ".csv";
-    experiment.mOutputFileName = dir + "/" + experiment.mOutputFileName;
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
-
-def runPolygonHalton(fieldSize: int, polygonFile:str, rotate:bool = False, dir:str = realWorldDirectory, printExperimentHoles:bool = None):
-    experiment = HaltonExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mHoleIncrement = 10;
-    experiment.mNumRepeats = globalHighNumRepeats;
-    experiment.mTreasureShape="polygon"
-    experiment.mPolygonFile = polygonFile;
-    experiment.mRotatePolygon = rotate;
-    if rotate:
-        experiment.mOutputFileName = "horizontalpolygon halton fieldsize" + str(fieldSize) + ".csv";
-    else:
-        experiment.mOutputFileName = "verticalpolygon halton fieldsize" + str(fieldSize) + ".csv";
-    experiment.mOutputFileName = dir + "/" + experiment.mOutputFileName;
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
-
-def runPolygonStaggerXY(fieldSize:int, polygonFile:str, rotate:bool = False, dir:str = realWorldDirectory, printExperimentHoles:bool = None):
-    experiment = StaggerXYExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mNumRepeats = globalHighNumRepeats; # was 5000;
-    experiment.mTreasureShape="polygon"
-    experiment.mPolygonFile = polygonFile;
-    experiment.mRotatePolygon = rotate;
-    experiment.mStaggerY = True;
-    if rotate:
-        experiment.mOutputFileName = "horizontalpolygon staggerXY fieldsize" + str(fieldSize) + ".csv";
-    else:
-        experiment.mOutputFileName = "verticalpolygon staggerXY fieldsize" + str(fieldSize) + ".csv";
-    experiment.mOutputFileName = dir + "/" + experiment.mOutputFileName;
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
-
-# stdDevFactor is the value by which the distance between holes is divided to give one standard deviation
-# for randomisation of hole positions. See StaggeredPlayer.doStaggeredLayout() in Holes.py for
-# more information.
-def runPolygonRandomisedStaggerXY(fieldSize:int, polygonFile:str, stdDevFactor:int, rotate:bool = False, dir:str = realWorldDirectory, printExperimentHoles:bool = None):
-    experiment = RandomisedStaggerXYExperiment(stdDevFactor);
-    experiment.mFieldSize = fieldSize;
-    experiment.mNumRepeats = globalHighNumRepeats; # was 5000;
-    experiment.mTreasureShape = "polygon"
-    experiment.mPolygonFile = polygonFile;
-    experiment.mRotatePolygon = rotate;
-    experiment.mStaggerY = True;
-    experiment.mRandomise = True;
-    experiment.mStdDeviationDivisor = stdDevFactor;
-    if rotate:
-        experiment.mOutputFileName = "horizontalpolygon randomisedStaggerXY sd" + str(stdDevFactor) + " fieldsize" + str(fieldSize) + ".csv";
-    else:
-        experiment.mOutputFileName = "verticalpolygon randomisedStaggerXY sd" + str(stdDevFactor) + " fieldsize" + str(fieldSize) + ".csv";
-    experiment.mOutputFileName = dir + "/" + experiment.mOutputFileName;
-    runner = ExperimentRunner(experiment);
-    if printExperimentHoles != None:
-        runner.printExperiment(printExperimentHoles);
-    else:
-        runner.runExperiment(printData=False);
+# Run an experiment using the given layoutAlgorithm with a randomised RectangularTreasure.
+# The treasure is randomised by the RandomisedTreasureManager. Place results in the dir
+# subdirectory of the data directory. printExperimentHoles is the number of holes to use when printing
+# the experiment field.
+# # NOTE that when printExperimentHoles is defined, the experiment will not be run, only printed.
+def runRandomisedTreasureExperiment(layoutAlgorithm:str, fieldSize:int, dir:str, printExperimentHoles = None):
+    treasureManager = RandomisedTreasureManager();
+    fileName = getRandomisedTreasureFileName(fieldSize, layoutAlgorithm, dir);
+    experiment = getExperiment(treasureManager, layoutAlgorithm);
+    if layoutAlgorithm == "halton" or layoutAlgorithm == "random" or layoutAlgorithm == "randomisedStaggerXY sd8":
+        experiment.mStopAtSuccess = 99;
+    doRunExperiment(fieldSize, experiment, fileName, numRepeats = 60000, smallNumHolesNumRepeats = 60000, printExperimentHoles = printExperimentHoles);
 
 
-# Run experiments with a circular treasure.
-# These are not used in the Layout Matters article and can be ignored.
+# FUNCTIONS TO GENERATE GRAPHS AND TABLES
 
-def runCircularHexagonal(fieldSize:int, treasureRadius:float, numRepeats:int = globalNumRepeats, numHoles:int = None, dir:str = circularDirectory):
-    experiment = HexExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mTreasureShape="circle"
-    experiment.mTreaureRadius = treasureRadius;
-    experiment.mNumRepeats = numRepeats;
-    addToFileName = "";
-    if numHoles != None:
-        experiment.mStartHoles = numHoles;
-        experiment.mMaxHoles = numHoles;
-        addToFileName = " holes" + str(numHoles);
-    experiment.mOutputFileName = dir + "/" + str(treasureRadius) + "circle hex fieldsize" + str(fieldSize) + addToFileName +  ".csv";
-    runner = ExperimentRunner(experiment);
-    runner.runExperiment(printData=False);
-
-def runCircularHexagonalLike(fieldSize:int, treasureRadius:float, numRepeats:int = globalNumRepeats, numHoles:int = None, dir:str = circularDirectory):
-    experiment = BasicLayoutExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mTreasureShape="circle"
-    experiment.mTreaureRadius = treasureRadius;
-    experiment.mNumRepeats = numRepeats;
-    addToFileName = ""
-    if numHoles != None:
-        experiment.mStartHoles = numHoles;
-        experiment.mMaxHoles = numHoles;
-        addToFileName = " holes" + str(numHoles);
-    experiment.mOutputFileName = dir + "/" + str(treasureRadius) + "circle hexlike fieldsize" + str(fieldSize) + addToFileName + ".csv";
-    runner = ExperimentRunner(experiment);
-    runner.runExperiment(printData=False);
-
-def runCircularStaggerXY(fieldSize:int, treasureRadius:float, numRepeats:int = globalNumRepeats, numHoles:int = None, dir:str = circularDirectory):
-    experiment = StaggerXYExperiment();
-    experiment.mFieldSize = fieldSize;
-    experiment.mTreasureShape="circle"
-    experiment.mTreaureRadius = treasureRadius;
-    experiment.mNumRepeats = numRepeats;
-    addToFileName = ""
-    if numHoles != None:
-        experiment.mStartHoles = numHoles;
-        experiment.mMaxHoles = numHoles;
-        addToFileName = " holes" + str(numHoles);
-    experiment.mOutputFileName = dir + "/" + str(treasureRadius) + "circle staggerXY fieldsize" + str(fieldSize) + addToFileName + ".csv";
-    runner = ExperimentRunner(experiment);
-    runner.runExperiment(printData=False);
-
-
-# Generates a summary graph of the overall success (over all number of holes)
+# Generates A summary graph of the overall success (over all number of holes)
 # of various layout algorithms versus log of the treasure elongation ratio.
+# The graph is for a treasure orientation of rotation degrees.
 # Assumes all the raw success data is in the dir subdirectory of the data directory
 # (defaults to summaryDirectory - see global variables above). For example the user
 # should call the function generateSummaryData() before calling this function.
 # The raw success data is then analysed by this function, computing the "area under the curve"
-# of the success graphs specified by each success experiment. Such a computation is done
+# of the success curves specified by each success experiment. Such a computation is done
 # for each layout algorithm for each treasure dimension.
 # The results of this analysis is stored in a csv file whose name is:
-# "summary fieldsize<fieldSize> siteArea<siteArea> maxholes<maximumHoles>.csv".
+# "summary orientation<rotation> fieldsize<fieldSize> siteArea<siteArea> maxholes<maximumHoles>.csv".
 # in the outputDir subdirectory of the data directory.
 # The area under the curve is approximated by summing the success rates for each number
 # of holes, from 1 to maximumHoles (for cases where success data reaches 100% before
 # maximumHoles, 100% success rate is used for the remaining number of holes).
 # maximumHoles should be larger than any algorithm takes to reach 100%.
+# Where data aren't available for each number of holes, values are interpolated.
 # The graph will be shown in a window if showGraph is True, otherwise just saved.
-# The graph will zoom the y axis so that the mininum y value is the minimum value of the
+# The graph will zoom the y axis so that the mininum y value relates to the minimum value of the
 # minFieldName algorithm if zoomCentral is True.
 # If minY is set, that will be the minimum value on the y axis (and minFieldName is ignored).
 # Data will not be re-analysed if compileData is False (rather a stored version
@@ -488,9 +280,8 @@ def runCircularStaggerXY(fieldSize:int, treasureRadius:float, numRepeats:int = g
 # greater than maximumHoles in the data, otherwise no warning is produced.
 # If saveGraph is False, no graph will be produced, only the summary data files mentioned
 # above.
-def generateSummaryGraph(fieldSize:int, siteArea:int, heights:list, showGraph:bool = True, zoomCentral:bool = False, minFieldName:str = "random", compileData:bool = True, maximumHoles=14000, dir:str = summaryDirectory, outputDir:str = summaryDirectory, suppressNumHoleWarning:bool = False, saveGraph = True, minY = None):
-    fileStem = "summary fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + " maxholes" + str(maximumHoles);
-    squareLength = round(math.sqrt(siteArea), 2);
+def generateSummaryGraph(fieldSize:int, siteArea:int, shortSides:list, rotation:float, showGraph:bool = True, zoomCentral:bool = False, minFieldName:str = "random", compileData:bool = True, maximumHoles=14000, dir:str = summaryDirectory, outputDir:str = summaryDirectory, suppressNumHoleWarning:bool = False, saveGraph = True, minY = None, maxY = None):
+    fileStem = "summary orientation" + str(rotation) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + " maxholes" + str(maximumHoles);
 
     if (compileData):
         fileName = "data/" + outputDir + "/" + fileStem + ".csv";
@@ -499,10 +290,13 @@ def generateSummaryGraph(fieldSize:int, siteArea:int, heights:list, showGraph:bo
         f = open(fileName, "w");
         f.write("ratio, hexlike, staggerXY, randomisedStaggerXY8, halton, random\n");
 
-        for h in heights:
-            height = round(h, 2);
-            width = round(siteArea / h, 2);
-            fileStart = dir + "/" + str(width) + "x" + str(height) + "rectangle";
+        for s in shortSides:
+            longSide = siteArea/s;
+            shortSide = s;
+            roundedShortSide = round(s, 2);
+            roundedLongSide = round(longSide, 2);
+
+            fileStart = dir + "/" + str(roundedLongSide) + "x" + str(roundedShortSide) + "@" + str(rotation) + "rectangle";
             fileEnd = "fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
 
             successHexLike = areaUnderCurve(fileStart + " hexlike " + fileEnd, maximumHoles, suppressWarning =suppressNumHoleWarning)/maximumHoles;
@@ -511,13 +305,7 @@ def generateSummaryGraph(fieldSize:int, siteArea:int, heights:list, showGraph:bo
             successRandom = areaUnderCurve(fileStart + " random " + fileEnd, maximumHoles, suppressWarning =suppressNumHoleWarning)/maximumHoles;
             successRandomisedStaggerXY8 = areaUnderCurve(fileStart + " randomisedStaggerXY sd8 " + fileEnd, maximumHoles, suppressWarning =suppressNumHoleWarning)/maximumHoles;
 
-            if (round(h, 2) >= squareLength):
-                w = siteArea / h;
-                ratio = -h / w;
-            else :
-                w = siteArea / h;
-                ratio = w / h;
-
+            ratio = longSide / shortSide;
             f.write(str(ratio) + ", " + str(successHexLike) + ", " +  str(successStaggerXY) + ", " + str(successRandomisedStaggerXY8) + ", " + str(successHalton) + ", " + str(successRandom) + "\n");
 
         f.flush();
@@ -528,49 +316,94 @@ def generateSummaryGraph(fieldSize:int, siteArea:int, heights:list, showGraph:bo
             graphFileName = graphFileName + " central";
             minX = None;
             maxX = None;
-            plotSummaryExperiment(fileStem, squareLength, siteArea, fieldSize, graphFileName, minFieldName=minFieldName, maxHoles = maximumHoles, dir = outputDir, outputDir = outputDir, minX = minX, maxX = maxX, zoom=True, showGraph = showGraph, minY = minY);
+            plotSummaryExperiment(fileStem, siteArea, rotation, fieldSize, graphFileName, minFieldName=minFieldName, maxHoles = maximumHoles, dir = outputDir, outputDir = outputDir, minX = minX, maxX = maxX, zoom=True, showGraph = showGraph, minY = minY, maxY = maxY);
         else:
-            plotSummaryExperiment(fileStem, squareLength, siteArea, fieldSize, graphFileName, minFieldName=minFieldName, maxHoles = maximumHoles, dir = outputDir, outputDir = outputDir, showGraph = showGraph, minY = minY);
+            plotSummaryExperiment(fileStem, siteArea, rotation, fieldSize, graphFileName, minFieldName=minFieldName, maxHoles = maximumHoles, dir = outputDir, outputDir = outputDir, showGraph = showGraph, minY = minY, maxY = maxY);
 
 
-# Generates a success graph of data from simulations using the real world polygon treasure,
-# for the various layout algorithms.
-# Raw data in the realWorldDirectory subdirectory of the data directory (see global variables
+# Generates a graph of overall success of the algorithms for a given treasure elongation ratio
+# against orientation of the treasure (from -90 to 90 degrees). Areas under the curve of raw success
+# data are calculated as for generateSummaryGraph() as a measure of overall performance of the algorithms,
+# and stored in a file named "rotation ratio<ratio> fieldsize<fieldSize> siteArea<siteArea> maxholes<maximumHoles>"
+# in the rotationDirectory subdirectory of the data directory. Raw success data must exist in that same directory,
+# for example call generateRotationData() before calling this function.
+def generateRotationGraph(fieldSize:int, siteArea:float, ratio:float, maximumHoles:int):
+    fileStem = "rotation ratio" + str(ratio) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + " maxholes" + str(maximumHoles);
+    fileName = "data/" + rotationDirectory + "/" + fileStem + ".csv";
+    outputFile = Path(fileName);
+    outputFile.parent.mkdir(exist_ok=True, parents=True);
+    f = open(fileName, "w");
+
+    f.write("orientation, hexlike, staggerXY, randomisedStaggerXY8, halton, random\n");
+
+    angles = [i * 7.5 for i in range(-12, 13)];
+    for angle in angles:
+        angle = round(angle, 1);
+        shortSide = math.sqrt(siteArea / ratio);
+        longSide = siteArea/shortSide;
+        shortSide = round(shortSide, 2);
+        longSide = round(longSide, 2);
+        fileStart = rotationDirectory + "/" + str(longSide) + "x" + str(shortSide) + "@" + str(angle) + "rectangle";
+        fileEnd = "fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) +  ".csv";
+
+        successHexLike = areaUnderCurve(fileStart + " hexlike " + fileEnd, maximumHoles)/maximumHoles;
+        successStaggerXY = areaUnderCurve(fileStart + " staggerXY " + fileEnd, maximumHoles)/maximumHoles;
+        successHalton = areaUnderCurve(fileStart + " halton " + fileEnd, maximumHoles)/maximumHoles;
+        successRandom = areaUnderCurve(fileStart + " random " + fileEnd, maximumHoles)/maximumHoles;
+        successRandomisedStaggerXY8 = areaUnderCurve(fileStart + " randomisedStaggerXY sd8 " + fileEnd, maximumHoles)/maximumHoles;
+
+        f.write(str(angle) + ", " + str(successHexLike) + ", " +  str(successStaggerXY) + ", " + str(successRandomisedStaggerXY8) + ", " + str(successHalton) + ", " + str(successRandom) + "\n");
+
+    f.flush();
+    plotRotationExperiment(fileStem, fieldSize, siteArea, ratio, ["hexlike", "staggerXY", "randomisedStaggerXY8", "halton", "random"], maximumHoles);
+
+
+# Generates success graph of randomised treasure experiments, zoomed in to various parts of the curves.
+# Data are assumed to be in the randomisedTreasureDirectory subdirectory of the data directory.
+# For example call generateRandomisedTreasureData() before calling this function.
+def generateRandomisedTreasureGraphs(fieldSize:int):
+    plotRandomisedTreasureExperiment(fieldSize, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], maxX = 1200);
+    plotRandomisedTreasureExperiment(fieldSize, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], maxX = 25, addToFile = "25");
+    plotRandomisedTreasureExperiment(fieldSize, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], minX = 80, maxX = 200, addToFile = "200");
+    plotRandomisedTreasureExperiment(fieldSize, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], minX = 200, maxX = 400, addToFile = "400");
+    plotRandomisedTreasureExperiment(fieldSize, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], minX = 400, maxX = 800, addToFile = "800");
+    plotRandomisedTreasureExperiment(fieldSize, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], minX = 800, maxX = 1200, addToFile = "1200");
+
+
+# Generates a success graph of data from simulations using the case study polygon treasure
+# for the various layout algorithms, for the rotation orientation.
+# desription describes the polygon shape we are using.
+# Raw data in the caseStudiesDirectory subdirectory of the data directory (see global variables
 # above) must exist, for example the user should call generatePolygonData() before
 # calling this function.
 # A graph is shown in a window if showGraph is True.
-# Data on horizontal orientation of the polygon will be used if rotate is True,
-# otherwise data on the vertical orientation will be used.
 # If zoom is True the graph will zoom in to the first 80 holes.
-def generatePolygonSuccessGraph(fieldSize:int, zoom:bool = False, showGraph:bool = False, rotate:bool = False):
-    if rotate:
-        orientation = "horizontal";
-    else:
-        orientation = "vertical"
-
+def generatePolygonSuccessGraph(fieldSize:int, description:str, rotation:float, zoom:bool = False, showGraph:bool = False):
     zoomString = "";
-    maxX = 600;
-    maxY = -1;
+    maxX = 350;
+    maxY = 100;
     if zoom:
-        maxY = 40;
-        maxX = 80
+        maxY = 50;
+        maxX = 40
         zoomString = "zoom ";
-    
-    filename = realWorldDirectory + "/" + orientation + "polygon " + zoomString + "fieldsize" + str(fieldSize) + ".png"
-    plotPolygonSuccessExperiment(fieldSize, filename, maxX, maxY, rotate=rotate, showGraph = showGraph);
+    filename = caseStudiesDirectory + "/casestudypolygon " + description + "@" + str(rotation) + " " + zoomString + "fieldsize" + str(fieldSize) + ".png"
+    plotPolygonSuccessExperiment(fieldSize, description, filename, maxX, maxY, rotation);
 
 
+# This is not used in the article.
+# It may not work as is, but is included in case we need to modify it to work in the future.
+# 
 # Generates a summary graph of success of various layout algorithms versus log of the elongation
 # ratio, including data for very elongated treasure dimensions.
-# Raw data on success of each algorithm at treasure heights in "heights" must exist in the
+# Raw data on success of each algorithm at treasure short side in shortSides must exist in the
 # largeRatioDirectory subdirectory of the data directory.
 # For example the user should call generateLargeRatioData() before calling this function.
-# This function compiles that data, writing the "area under the curve" of the success graphs for each
+# This function compiles that data, writing the "area under the curve" of the success curves for each
 # algorithm for each treasure dimensions to a file in the largeRatioDirectory named:
 # "summary large ratio fieldsize<fieldSize> siteArea<siteArea>.csv".
 # If showGraph is True a graph will be displayed in a window, otherwise just saved.
 # If addToFileName is set, its value will be added to the summary file produced.
-def generateSummaryGraphLargeRatio(fieldSize:int, siteArea:int, heights:list, showGraph:bool = False, addToFileName:str = "") -> None:
+def generateSummaryGraphLargeRatio(fieldSize:int, siteArea:int, shortSides:list, showGraph:bool = False, addToFileName:str = "") -> None:
     maxHoles = 14000;
     if addToFileName != "":
         addToFileName = " " + addToFileName;
@@ -578,56 +411,39 @@ def generateSummaryGraphLargeRatio(fieldSize:int, siteArea:int, heights:list, sh
     fileName = "data/" + largeRatioDirectory + "/" + fileStem + ".csv";
     f = open(fileName, "w");
     f.write("ratio, randomisedStaggerXY, halton, random\n");
+    rotation = 90;
 
-    for h in heights:
-        height = round(h, 2);
-        width = round(siteArea / h, 2);
-        fileStart = largeRatioDirectory + "/" + str(width) + "x" + str(height) + "rectangle";
+    for s in shortSides:
+        shortSide = s;
+        longSide = siteArea / s;
+        fileStart = largeRatioDirectory + "/" + str(round(longSide, 2)) + "x" + str(round(shortSide, 2)) + "@" + str(rotation) + "rectangle";
         fileEnd = "fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
         successHalton = areaUnderCurve(fileStart + " halton " + fileEnd, maximumHoles=maxHoles)/maxHoles;
         successRandom = areaUnderCurve(fileStart + " random " + fileEnd, maximumHoles=maxHoles)/maxHoles;
         successRandomisedStaggerXY8 = areaUnderCurve(fileStart + " randomisedStaggerXY sd8 " + fileEnd, maximumHoles=maxHoles)/maxHoles;
-        
-        squareLength = round(math.sqrt(siteArea), 2);
-        if (round(h, 2) >= squareLength):
-            w = siteArea / h;
-            ratio = -h/w;
-        else :
-            w = siteArea / h;
-            ratio = w/h;
+
+        ratio = longSide / shortSide;
 
         f.write(str(ratio) + ", " + str(successRandomisedStaggerXY8) + ", " +  str(successHalton) +", " + str(successRandom) + "\n");
     f.flush();
-    plotSummaryExperiment(fileStem, squareLength, siteArea, fieldSize, fileStem, fieldNames=["randomisedStaggerXY", "halton", "random"], maxHoles = maxHoles, dir=largeRatioDirectory, showGraph = showGraph);
+    plotSummaryExperiment(fileStem, siteArea, rotation, fieldSize, fileStem, fieldNames=["randomisedStaggerXY", "halton", "random"], maxHoles = maxHoles, dir=largeRatioDirectory, showGraph = showGraph);
 
 
-# Generates a table and graph of "crossover points" of the success of each layout
+# Generates a table of the "crossover points" (elongation ratios) of the success of each layout
 # algorithm in layoutAlgorithms and the halton layout algorithm, using the summary data.
-# There is a column in the table for each layout algorithm, and a row for each siteArea.
-# The fieldSize is a constant.
-# It assumes that the halton algorithm starts out performing better than the given algorithm for
-# larger vertical ratios, crosses over once and performs worse for a while at smaller vertical
-# and horizontal ratios, and crosses over again (once) and performs better for larger horizontal ratios.
-# See the "Layout Matters" paper and the summary graphs for more detail.
-# If vertical is True, the crossover points for vertical elongation will be used (the first crossover),
-# otherwise crossover points for horizontal elongation will be used (the second crossover).
-# The function assumes summary data (produced by e.g. generateSummaryGraph()) for each layout algorithm
-# and siteArea exists in the summaryDirectory.
-# This function compiles data into a crossover data file in the summaryDirectory named:
-# "<orientation> crossover fieldsize<fieldSize>.csv", where orientation is either "vertical" or
-# "horizontal". The a Plotter function is called for table and graph generation.
-# The graph and table is saved to the summaryDirectory subdirectory of the graphs directory.
-def generateCrossoverTableAndGraph(fieldSize:int, siteAreas:list, layoutAlgorithms:list, vertical:bool, showGraph:bool = False) -> None:
-    if vertical:
-        orientation = "vertical"
-    else:
-        orientation = "horizontal"
-    fileStem = summaryDirectory + "/" + orientation + " crossover fieldsize" + str(fieldSize);
+# That data must exist, for example call generateSummaryGraph() before calling this function.
+# There is a row for vertically and for horizontally elongated sites.
+# It assumes that the algorithms start out performing better than the halton layout for
+# elongation ratio of 1, and then "cross over" the halton performance to perform worse only
+# once as elongation ratio increases. This turns out to be true for vertical and horizontal
+# elongation.
+def generateCrossoverTable(fieldSize:int, siteArea:float, layoutAlgorithms:list) -> None:
+    fileStem = summaryDirectory + "/" "crossover fieldsize" + str(fieldSize) + " siteArea" + str(siteArea);
     fileName = "data/" + fileStem + ".csv";
     f = open(fileName, "w");
 
     # write headers
-    f.write("site area, ");
+    f.write("rotation, ");
     for i in range(len(layoutAlgorithms)):
         f.write(layoutAlgorithms[i]);
         if i != len(layoutAlgorithms) - 1:
@@ -635,105 +451,40 @@ def generateCrossoverTableAndGraph(fieldSize:int, siteAreas:list, layoutAlgorith
     f.write("\n");
 
     # write data
-    for i in range(len(siteAreas)):
-        f.write(str(siteAreas[i]) + ", ");
-        for j in range(len(layoutAlgorithms)):
-            dataFileName = "summary fieldsize" + str(fieldSize) + " siteArea" + str(siteAreas[i]) + " maxholes" + str(6000) + ".csv";
-            crossovers = crossoverPoints(dataFileName, layoutAlgorithms[j]);
-            if vertical:
-                f.write(str(-crossovers[0]));
-            else:
-                f.write(str(crossovers[1]));
-            if j != len(layoutAlgorithms) - 1:
+    for rotation in [0, 90]:
+        f.write(str(rotation) + ", ");
+        for i in range(len(layoutAlgorithms)):
+            dataFileName = "summary orientation" + str(rotation) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + " maxholes" + str(2250) + ".csv";
+            crossover = crossoverPoint(dataFileName, layoutAlgorithms[i]);
+            f.write(str(crossover));
+            if i != len(layoutAlgorithms) - 1:
                 f.write(", ");
         f.write("\n");
     f.flush();
 
-    plotSummaryCrossoverTable(fileStem, layoutAlgorithms, 9, 4, "site area", 0.2, vertical, showGraph);
-    plotSummaryCrossoverGraph(fileStem, layoutAlgorithms, "crossover points of various algorithms " + orientation, showGraph);
-
-
-# As for generateCrossoverTableAndGraph() except that no graph is produced, and there is
-# a row for each fieldSize while siteArea remains constant.
-def generateFieldSizeCrossoverTable(fieldSizes:list, siteArea:int, layoutAlgorithms:list, vertical:bool) -> None:
-    if vertical:
-        orientation = "vertical"
-    else:
-        orientation = "horizontal"
-    fileStem = summaryDirectory + "/" + orientation + " crossover siteArea" + str(siteArea);
-    fileName = "data/" + fileStem + ".csv";
-    f = open(fileName, "w");
-
-    # write headers
-    f.write("field size, ");
-    for i in range(len(layoutAlgorithms)):
-        f.write(layoutAlgorithms[i]);
-        if i != len(layoutAlgorithms) - 1:
-                f.write(", ");
-    f.write("\n");
-
-    # write data
-    for i in range(len(fieldSizes)):
-        f.write(str(fieldSizes[i]) + ", ");
-        for j in range(len(layoutAlgorithms)):
-            dataFileName = "summary fieldsize" + str(fieldSizes[i]) + " siteArea" + str(siteArea) + " maxholes" + str(9000) + ".csv";
-            crossovers = crossoverPoints(dataFileName, layoutAlgorithms[j]);
-            if vertical:
-                f.write(str(-crossovers[0]));
-            else:
-                f.write(str(crossovers[1]));
-            if j != len(layoutAlgorithms) - 1:
-                f.write(", ");
-        f.write("\n");
-    f.flush();
-
-    plotSummaryCrossoverTable(fileStem, layoutAlgorithms, 9, 4, "field size", 0.2, vertical);
- 
-
-# Generates graph for success of various layout algorithms for a single number of holes (numHoles),
-# versus log of treasure elongation ratio.
-# Success data must exist in the dir subdirectory of the data directory (defaults to
-# specificHolesDirectory) for each treasure height in heights, for the given fieldSize
-# and siteArea. For example the user should call generateSpecificNumberOfHolesData()
-# before calling this function.
-# If minFieldName is specified, it is the layout algorithm for which the minimum success rate
-# is the minimum y axis value.
-# This graph was not used in the paper and still needs testing.
-def generateSpecificNumberOfHolesGraph(fieldSize:int, siteArea:int, heights:list, numHoles:int, dir:str = specificHolesDirectory, minFieldName:str = None) -> None:
-    layoutAlgorithms = ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"];
-
-    plotSpecificNumberOfHoles(fieldSize, siteArea, heights, numHoles, layoutAlgorithms, dir = dir, minFieldName = minFieldName);
+    plotSummaryCrossoverTable(fileStem, layoutAlgorithms, 100, 7, 2.8, 0.2, False);
 
 
 # Generates several graphs of success of various layout algorithms. A graph is generated for each of
-# a small number of treasure elongation ratios, for each of a small number of site areas (currently
-# uses only a single siteArea value), for each elongation orientation (vertical and horizontal).
-# Raw success data for these must exist in the drillDownDirectory subdirectory of the data
-# directory. For example the user should call generateSpecificRatioData() before calling this function.
-def generateSpecificRatioGraphs(fieldSize:int):
-    progress_columns = (
-    "[progress.description]{task.description}",
-    BarColumn());
+# a small number of treasure elongation ratios, for several orientations. Site area is fixed at 100.
+# Raw success data for these must exist in the successDirectory subdirectory of the data
+# directory. For example the user should call generateSuccessData() before calling this function.
+def generateSuccessGraphs(fieldSize:int):
 
-    for vertical in [True, False]:
-        if vertical:
-            orientation = "vertical";
-        else:
-            orientation = "horizontal"
+    for rotation in [0, 30, 60, 90]:
         for ratio in [1, 5, 20]:
-            if not vertical and ratio == 1:
-                # we don't need both orientations of a square treasure
+            if rotation == 90 and ratio == 1:
+                # we don't need vertical and horizontal for a square treasure
                 continue;
             for siteArea in [100]:
-                if vertical:
-                    width = round(math.sqrt(siteArea / ratio), 2);
-                    height = round(siteArea/width, 2);
-                else:
-                    height = round(math.sqrt(siteArea / ratio), 2);
-                    width = round(siteArea/height, 2);
+                shortSide = math.sqrt(siteArea / ratio);
+                longSide = siteArea/shortSide;
+                shortSide = round(shortSide, 2);
+                longSide = round(longSide, 2);
 
                 # set the maximum x value for each graph
                 maxX = -1;
+                # we currently only consider siteArea of 100 but that may change in the future
                 if ratio == 1:
                     if siteArea == 20:
                         maxX = 1500;
@@ -756,90 +507,78 @@ def generateSpecificRatioGraphs(fieldSize:int):
                     if siteArea == 200:
                         maxX = 300;
                 
-                plotSuccessExperiment(fieldSize, width, height, siteArea, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], maxX = maxX, showGraph = False);
+                plotSuccessExperiment(fieldSize, shortSide, longSide, rotation, siteArea, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], maxX = maxX);
 
                 if siteArea == 100:
                     # plot a graph zoomed in to a small number of holes when siteArea is 100.
-                    # These were not used in the paper.
-                    plotSuccessExperiment(fieldSize, width, height, siteArea, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], maxX = 30, maxY = 40, showGraph = False);
+                    plotSuccessExperiment(fieldSize, shortSide, longSide, rotation, siteArea, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], maxX = 30, maxY = 40);
 
 
+# This is not used in the paper and may not work as is. It is included in case
+# we need to modify it to work in the future.
+#
 # Generates graphs showing the number of additional holes that must be dug
 # to increase the success rate by 1 percentage point, over a range of
 # success rates (from 1 to 100).
 # Graphs are generated for a number of elongation ratios (with both horizontal and
 # vertical orientation), for a site area of 100.
-# Graphs will be saved in the "drilldown" subdirectory of the graphs directory.
+# Graphs will be saved in the "success" subdirectory of the graphs directory.
 # This was not used in the paper, but may be used in future.
 def generateCostGraphs(fieldSize:int):
-    for vertical in [True, False]:
+    for rotation in [0, 90]:
         for ratio in [1, 5, 20]:
-            if not vertical and ratio == 1:
+            if rotation == 90 and ratio == 1:
                 continue;
             for siteArea in [100]:
-                if vertical:
-                    width = round(math.sqrt(siteArea / ratio), 2);
-                    height = round(siteArea/width, 2);
-                else:
-                    height = round(math.sqrt(siteArea / ratio), 2);
-                    width = round(siteArea/height, 2);
-                plotCostGraph(fieldSize, width, height, siteArea, "halton", maxY = 50);
-                plotCostGraph(fieldSize, width, height, siteArea, "randomisedStaggerXY sd8", maxY = 50);
+                shortSide = math.sqrt(siteArea / ratio);
+                longSide = siteArea/shortSide
+                plotCostGraph(fieldSize, shortSide, longSide, rotation, siteArea, "halton", maxY = 50);
+                plotCostGraph(fieldSize, shortSide, longSide, rotation, siteArea, "randomisedStaggerXY sd8", maxY = 50);
 
 
 # Generates a table showing the number of holes needed to achieve success rates
-# of 85%, 90%, and 100% using data from the drilldown (specific ratios) success
-# experiments, for the treasure specifications (elongation ratios) and layout algorithms
-# used in those experiments. Assumes that data is in the drilldown subdirectory of the
-# data directory.
-# fieldSize and siteArea are constants.
-# There is a row in the table for each combination of treasure elongation ratio and
-# layout algorithm.
-def generateSpecificRatioHolesForSuccessRatesTables(fieldSize:int, siteArea:int):
+# of 85%, 90%, and 100% using data from the success experiments for the layout
+# algorithms used in those experiments. Data are included for horizontal and
+# vertical treasure orientations and several elongation ratios.
+# Assumes that data are in the success subdirectory of the data directory.
+# fieldSize and siteArea are as provided.
+# There is a row in the table for each combination of treasure elongation ratio, orientation,
+# and layout algorithm.
+def generateSuccessHolesForSuccessRatesTables(fieldSize:int, siteArea:int):
     plotHolesForSuccessRatesTable(fieldSize, siteArea, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"]);
 
 
 # Generates a table showing the number of holes needed to achieve success rates
-# of 85%, 90%, and 100% using data from the real world polygon treasure
-# experiments for the layout algorithms used in those experiments. The table
-# shows value for a vertically oriented polygon unless rotate is True in
-# which case data for the horizontally oriented polygon is used.
-# There is a row in the table for each layout algorithm.
-def generatePolygonHolesForSuccessRatesTables(fieldSize:int, rotate:bool = False):
-    if rotate:
-        orientation = "horizontal";
-    else:
-        orientation = "vertical"
-
-    filename = "graphs/" + realWorldDirectory + "/holes for success rates table " + orientation + "polygon fieldsize" + str(fieldSize) + ".png"
-    plotPolygonHolesForSuccessRatesTable(fieldSize, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], not rotate);
+# of 85%, 90%, and 100% using data from the case study polygon treasure
+# experiments for the layout algorithms used in those experiments. Data 
+# for the given treasure rotation are used and are assumed to exist in the
+# casestudies subdirectory of the data directory. There is a row in the table
+# for each layout algorithm.
+def generatePolygonHolesForSuccessRatesTables(fieldSize:int, description:str, rotation:float):
+    filename = "graphs/" + caseStudiesDirectory + "/holes for success rates table " + description + " polygon fieldsize" + str(fieldSize) + ".png"
+    plotPolygonHolesForSuccessRatesTable(fieldSize, description, ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"], rotation);
 
 
 # Generates a table showing the maximum difference in success rates across all
-# layout algorithms across a range of numbers of holes. This uses the success data in the "drilldown"
-# subdirectory of the data directory (which is assumed to exist). The treasure elongation ratios
-# (and orientations) and layout algorithms used in those success experiments are considered.
+# layout algorithms across a range of numbers of holes. This is the biggest difference
+# between any two curves of a success graph. This uses the success data in the "success"
+# subdirectory of the data directory (which are assumed to exist). The treasure elongation ratios
+# and layout algorithms used in those success experiments are considered. Only horizontal
+# and vertical orientations are considered.
 # There is a column for the maximum difference across all numbers of holes, and another for
-# the first 25 numbers of holes. There is a column for each treasure elongation ratio.
+# the first 25 holes. There is a row for each combination of treasure elongation ratio
+# and orientation.
 # Site area and field size are constant (both 100).
 def generateMaximumDifferenceInSuccessTable():
     data = [];
-    data.append(["Elongation", "Maximum Difference\nfor All Numbers of Pits\n(percentage points)", "Maximum Difference\nfor 1-25 Pits\n(percentage points)"]);
+    data.append(["Site Orientation\nand Elongation", "Maximum Difference\nfor All Numbers of Pits\n(percentage points)", "Maximum Difference\nfor 1-25 Pits\n(percentage points)"]);
 
     for ratio in [1, 5, 20]:
-        for vertical in [True, False]:
-            if vertical:
-                orientation = "Vertical";
-            else:
-                orientation = "Horizontal"
-
-            if not vertical and ratio == 1:
+        for rotation in [0, 90]:
+            if rotation == 90 and ratio == 1:
                 continue;
             
-            if ratio == 1:
-                data.append(["Square\n(1:1)"]);
-            else:
-                data.append([orientation + "ly Elongated\n(" + str(ratio) + ":1)"]);
+            data.append([str(rotation) + " Degrees\n(" + str(ratio) + ":1)"]);
 
             fieldSize = 100;
             siteArea = 100;
@@ -848,27 +587,47 @@ def generateMaximumDifferenceInSuccessTable():
             max = 0;
             max25 = 0;
 
-            if vertical:
-                width = round(math.sqrt(siteArea / ratio), 2);
-                height = round(siteArea/width, 2);
-            else:
-                height = round(math.sqrt(siteArea / ratio), 2);
-                width = round(siteArea/height, 2);
+            shortSide = math.sqrt(siteArea / ratio);
+            longSide = siteArea/shortSide;
 
             for la1 in range(len(layoutAlgorithms)):
                 for la2 in range(len(layoutAlgorithms)):
                     # we only consider each combination of layout algorithms once
                     if la2 < la1:
-                        maxDiff = getMaximumDifferenceInSuccessLayout(fieldSize, siteArea, layoutAlgorithms[la1], layoutAlgorithms[la2], width, height);
+                        maxDiff = getMaximumDifferenceInSuccessLayout(fieldSize, siteArea, layoutAlgorithms[la1], layoutAlgorithms[la2], shortSide, longSide, rotation);
                         if maxDiff > max:
                             max = maxDiff;
-                        maxDiff25 = getMaximumDifferenceInSuccessLayout(fieldSize, siteArea, layoutAlgorithms[la1], layoutAlgorithms[la2], width, height, maxHoles=25);
+                        maxDiff25 = getMaximumDifferenceInSuccessLayout(fieldSize, siteArea, layoutAlgorithms[la1], layoutAlgorithms[la2], shortSide, longSide, rotation, maxHoles=25);
                         if maxDiff25 > max25:
                             max25 = maxDiff25;
             data[len(data) - 1].append(round(max, 2));
             data[len(data) - 1].append(round(max25, 2));
 
-    plotTable(data, 6, 5, 2, 3.2, drillDownDirectory + "/maximum differences in success siteArea 100.png", cellHeight=0.04, title="Maximum Difference in Success Rates\nAcross All Layout Algorithms\nFor Any Given Number of Pits\nField Size 100m x 100m, Site Area 100m\u00b2");
+    plotTable(data, 6, 5, 2, 3.2, successDirectory + "/maximum differences in success siteArea 100.png", cellHeight=0.04, title="Maximum Difference in Success Rates\nAcross All Layout Algorithms\nFor Any Given Number of Pits\nField Size 100m x 100m, Site Area 100m\u00b2");
+
+
+# As for generateMaximumDifferenceInSuccessTable() but for randomised treasure experiments.
+# Data are assumed to exist in the randomisedTreasureDirectory subdirectory of the data
+# directory.
+def printMaximumDifferenceInSucessForRandomTreasure(fieldSize:int):
+    layoutAlgorithms = ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"];
+    max = 0;
+    max25 = 0;
+    maxHoles = 1000;
+    for la1 in range(len(layoutAlgorithms)):
+        for la2 in range(len(layoutAlgorithms)):
+            # we only consider each combination of layout algorithms once
+            if la2 < la1:
+                file1 = "data/" + randomisedTreasureDirectory + "/randomisedtreasure " + layoutAlgorithms[la1] + " fieldsize" + str(fieldSize) + ".csv";
+                file2 = "data/" + randomisedTreasureDirectory + "/randomisedtreasure " + layoutAlgorithms[la2] + " fieldsize" + str(fieldSize) + ".csv";
+                maxDiff = getMaximumDifferenceInSuccessLayoutFromFiles(file1, file2, maxHoles = maxHoles);
+                if maxDiff > max:
+                    max = maxDiff;
+                maxDiff25 = getMaximumDifferenceInSuccessLayoutFromFiles(file1, file2, maxHoles=25);
+                if maxDiff25 > max25:
+                    max25 = maxDiff25;
+    print("randomised treasure field size " + str(fieldSize) + " maximum difference over 1 to " + str(maxHoles) + " pits", max);
+    print("randomised treasure field size " + str(fieldSize) + " maximum difference over 1 to 25 pits", max25);
 
 
 # A class that runs a function in a new process. Multiprocessing is
@@ -877,9 +636,13 @@ def generateMaximumDifferenceInSuccessTable():
 # and join() to wait for it to complete.
 class MyProcess(multiprocessing.Process):
 
-    # function is the function to run, with the given arguments
-    def __init__(self, function, *args, **kwargs):
+    # function is the function to run, with the given arguments.
+    # seed is the random seed to set for python random number generator,
+    # which needs to be set in each new process to allow reproducibility.
+    # Best practice is for seed to be different each time this is created.
+    def __init__(self, seed:int, function, *args, **kwargs):
         super().__init__();
+        self.seed = seed;
         self.function = function;
         self.args = args;
         self.kwargs = kwargs;
@@ -888,6 +651,7 @@ class MyProcess(multiprocessing.Process):
     # causes this to run.
     def run(self):
         try:
+            random.seed(self.seed);
             self.function(*self.args, **self.kwargs);
         except Exception as e:
             print("exception: ", e);
@@ -896,71 +660,40 @@ class MyProcess(multiprocessing.Process):
 
 
 # Runs experiments to generate raw success data for various layout algorithms, for the given
-# fieldSize and siteArea, and the treasure heights in height.
+# fieldSize and siteArea, and the rectangular treasures whose short side are in shortSides.
 # These data are used in the summary analyses, where each point in a summary graph
-# is a "summary" of success data for one layout algorithm (given a siteArea, fieldSize, and
-# treasure elongation ratio), being the area under the curve of that success experiment
+# is a "summary" of success data for one layout algorithm (given a siteArea, fieldSize,
+# treasure elongation ratio, and orientation), being the area under the curve of that success experiment
 # (approximated by summing the success rates over all numbers of holes from 1 to a number
 # greater than the maximum number any algorithm needs to reach 100% success rate).
 # These data are also used in the low intensity summary analysis (small number of holes).
 # Data is stored in the dir subdirectory of the data directory, in the filenames specified
-# in the comments for the run...() functions (above).
+# in the comments for the get...FileName() functions (above).
 # After calling this function, the data can be graphed using generateSummaryGraph().
-def generateSummaryData(fieldSize:int, siteArea:int, height:list, dir:str = summaryDirectory) -> None:
+# seed is the random number generator seed to begin with.
+def generateSummaryData(fieldSize:int, siteArea:int, shortSides:list, rotation:float, seed:int, dir:str = summaryDirectory) -> None:
     progress_columns = (
         "[progress.description]{task.description}",
         BarColumn());
 
-    for h in height:
+    for s in shortSides:
+        longSide = siteArea/s;
         with Progress(*progress_columns) as progress2:
-            task = progress2.add_task("generating height = " + str(h) + " site area = " + str(siteArea) + " field size = " + str(fieldSize), total=10100, start=False);
-
-            a = MyProcess(runElongatedHalton, fieldSize, siteArea/h, h, siteArea, dir=dir);
+            task = progress2.add_task("generating short side = " + str(round(s, 2)) + " rotation = "  + str(rotation) + " site area = " + str(siteArea) + " field size = " + str(fieldSize), total=10100, start=False);
+            seed += 1;
+            a = MyProcess(seed, runRectangularExperiment, "halton", longSide, s, rotation, fieldSize, siteArea, dir);
             a.start();
-            b = MyProcess(runElongatedRandom, fieldSize, siteArea/h, h, siteArea, dir=dir);
+            seed += 1;
+            b = MyProcess(seed, runRectangularExperiment, "random", longSide, s, rotation, fieldSize, siteArea, dir);
             b.start();
-            c = MyProcess(runElongatedHexLike, fieldSize, siteArea/h, h, siteArea, dir=dir);
+            seed += 1;
+            c = MyProcess(seed, runRectangularExperiment, "hexlike", longSide, s, rotation, fieldSize, siteArea, dir);
             c.start();
-            d = MyProcess(runElongatedStaggerXY, fieldSize, siteArea/h, h, siteArea, dir=dir);
+            seed += 1;
+            d = MyProcess(seed, runRectangularExperiment, "staggerXY", longSide, s, rotation, fieldSize, siteArea, dir);
             d.start();
-            e = MyProcess(runRandomisedStaggerXY, fieldSize, siteArea/h, h, 8, siteArea, dir=dir);
-            e.start();
-
-            a.join();
-            b.join();
-            c.join();
-            d.join();
-            e.join();
-
-            progress2.start_task(task);
-            progress2.update(task, advance=10100)
-
-
-# Runs experiments for various layout algorithms for a specific number of holes (numHoles).
-# Experiments are run for the given fieldSize and siteArea and treasure heights in height.
-# Data is stored in the dir subdirectory of the data directory, in the filenames specified in
-# the comments for the run...() functions.
-# This was not used in the paper and still needs testing.
-def generateSpecificNumberOfHolesData(fieldSize:int, siteArea:int, height:list, numHoles:int = 30, dir:str = specificHolesDirectory):
-    progress_columns = (
-        "[progress.description]{task.description}",
-        BarColumn());
-
-    for h in height:
-        with Progress(*progress_columns) as progress2:
-            task = progress2.add_task("generating height = " + str(h) + " site area = " + str(siteArea) + " field size = " + str(fieldSize) + " holes = " + str(numHoles), total=10100, start=False);
-
-            startHoles = numHoles - 15;
-            stopHoles = numHoles + 15;
-            a = MyProcess(runElongatedRandom, fieldSize, siteArea/h, h, siteArea, numRepeats=globalHighNumRepeats, numHoles=numHoles, dir=dir, addToFileName = "holes" + str(numHoles));
-            a.start();
-            b = MyProcess(runElongatedHalton, fieldSize, siteArea/h, h, siteArea, numRepeats=globalHighNumRepeats, numHoles=numHoles, dir=dir, addToFileName = "holes" + str(numHoles));
-            b.start();
-            c = MyProcess(runElongatedHexLike, fieldSize, siteArea/h, h, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
-            c.start();
-            d = MyProcess(runElongatedStaggerXY, fieldSize, siteArea/h, h, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
-            d.start();
-            e = MyProcess(runRandomisedStaggerXY, fieldSize, siteArea/h, h, 8, siteArea, numRepeats=globalHighNumRepeats, startHoles = startHoles, maxHoles = stopHoles, dir=dir, addToFileName = "holes" + str(numHoles));
+            seed += 1;
+            e = MyProcess(seed, runRectangularExperiment, "randomisedStaggerXY sd8", longSide, s, rotation, fieldSize, siteArea, dir);
             e.start();
 
             a.join();
@@ -974,47 +707,42 @@ def generateSpecificNumberOfHolesData(fieldSize:int, siteArea:int, height:list, 
 
 
 # Generates success data for various layout algorithms using a small number of treasure
-# elongation ratios for a small number of site areas (currently only one).
-# Data is generated for vertical and horizontal orientations for each of the ratios.
+# elongation ratios for a number of orientations. Site area is 100.
 # These data are used in the success analysis, and graphs can be produced by
-# calling generateSpecificRatioGraphs().
-# Data is stored in the drillDownDirectory subdirectory of the data directory,
-# in the filenames specified in the comments for the run...() functions.
-def generateSpecificRatioData(fieldSize:int):
+# calling generateSuccessGraphs().
+# Data are stored in the successDirectory subdirectory of the data directory,
+# in the filenames specified in the comments for the get...FileName() functions.
+# seed is the random number generator seed to begin with.
+def generateSuccessData(fieldSize:int, seed:int):
     progress_columns = (
     "[progress.description]{task.description}",
     BarColumn());
 
-    for vertical in [True, False]:
-        if vertical:
-            orientation = "vertical";
-        else:
-            orientation = "horizontal"
-
+    for rotation in [0, 30, 60, 90]:
         for ratio in [1, 5, 20]:
-            if not vertical and ratio == 1:
-                # do not need both orientations of a square site
+            if rotation - 90 >= 0 and ratio == 1:
+                # do not need more rotations of a (rotated) square site
                 continue;
             for siteArea in [100]:
-                if vertical:
-                    width = round(math.sqrt(siteArea / ratio), 2);
-                    height = round(siteArea/width, 2);
-                else:
-                    height = round(math.sqrt(siteArea / ratio), 2);
-                    width = round(siteArea/height, 2);
+                shortSide = math.sqrt(siteArea / ratio);
+                longSide = siteArea/shortSide;
                 
                 with Progress(*progress_columns) as progress:
-                    task = progress.add_task("generating " + orientation + " ratio " + str(ratio) + " site area " + str(siteArea) +  " field size = " + str(fieldSize), total=10100, start=False);
-
-                    a = MyProcess(runElongatedRandom, fieldSize, width, height, siteArea, numRepeats=globalHighNumRepeats, dir=drillDownDirectory);
+                    task = progress.add_task("generating " + str(rotation) + " degree ratio " + str(ratio) + " site area " + str(siteArea) +  " field size = " + str(fieldSize), total=10100, start=False);
+                    seed += 1;
+                    a = MyProcess(seed, runRectangularExperiment, "random", longSide, shortSide, rotation, fieldSize, siteArea, successDirectory, numRepeats = globalHighNumRepeats);
                     a.start();
-                    b = MyProcess(runElongatedHalton, fieldSize, width, height, siteArea, numRepeats=globalHighNumRepeats, dir=drillDownDirectory);
+                    seed += 1;
+                    b = MyProcess(seed, runRectangularExperiment, "halton", longSide, shortSide, rotation, fieldSize, siteArea, successDirectory, numRepeats = globalHighNumRepeats);
                     b.start();
-                    c = MyProcess(runElongatedHexLike, fieldSize, width, height, siteArea, numRepeats=globalHighNumRepeats, dir=drillDownDirectory);
+                    seed += 1;
+                    c = MyProcess(seed, runRectangularExperiment, "hexlike", longSide, shortSide, rotation, fieldSize, siteArea, successDirectory, numRepeats = globalHighNumRepeats);
                     c.start();
-                    d = MyProcess(runElongatedStaggerXY, fieldSize, width, height, siteArea, numRepeats=globalHighNumRepeats, dir=drillDownDirectory);
+                    seed += 1;
+                    d = MyProcess(seed, runRectangularExperiment, "staggerXY", longSide, shortSide, rotation, fieldSize, siteArea, successDirectory, numRepeats = globalHighNumRepeats);
                     d.start();
-                    e = MyProcess(runRandomisedStaggerXY, fieldSize, width, height, 8, siteArea, numRepeats=globalHighNumRepeats, dir=drillDownDirectory)
+                    seed += 1;
+                    e = MyProcess(seed, runRectangularExperiment, "randomisedStaggerXY sd8", longSide, shortSide, rotation, fieldSize, siteArea, successDirectory, numRepeats = globalHighNumRepeats);
                     e.start();
 
                     a.join();
@@ -1027,37 +755,38 @@ def generateSpecificRatioData(fieldSize:int):
                     progress.update(task, advance=10100)
 
 
-# Runs success experiments on the real world site shape defined in polygonFile for various layout algorithms.
+# Runs success experiments on the case study site shape defined in polygonFile for various layout algorithms.
 # The polygon file must be a zip file containing files in the shapefile format.
 # See https://en.wikipedia.org/wiki/Shapefile . The files must contain one polygon shape and no other constructs.
-# The polygon is assumed to be elongated vertically. If rotate is true, the experiments
-# are run on a rotated, horizontally elongated polygon.
-# This is used in the real world analysis, and success graphs can be generated by
+# The polygon is assumed to be oriented vertically. It is converted to horizontal and then
+# rotated by rotation degrees.
+# This is used in the case study analysis, and success graphs can be generated by
 # calling generatePolygonSuccessGraph().
-# Data is stored in the realWorldDirectory subdirectory of the data directory, in the filenames
-# specified in the comments for the run...() functions.
-def generatePolygonData(fieldSize:int, polygonFile:str, rotate:bool = False):
+# Data is stored in the caseStudiesDirectory subdirectory of the data directory, in the filenames
+# specified in the comments for the get...FileName() functions.
+# seed is the random number geneator seed to begin with.
+def generatePolygonData(fieldSize:int, polygonFile:str, description:str, rotation:float, seed:int):
     progress_columns = (
         "[progress.description]{task.description}",
         BarColumn());
-    
-    if rotate:
-        orientation = "horizontal";
-    else:
-        orientation = "vertical";
 
     with Progress(*progress_columns) as progress:
-        task = progress.add_task("generating " + orientation + " polygon field size = " + str(fieldSize), total=10100, start=False);
+        task = progress.add_task("generating data for " + description + " polygon rotation " + str(rotation), total=10100, start=False);
 
-        a = MyProcess(runPolygonRandom, fieldSize, polygonFile, rotate);
+        seed += 1;
+        a = MyProcess(seed, runPolygonExperiment, "random", polygonFile, description, rotation, fieldSize, caseStudiesDirectory, numRepeats = globalHighNumRepeats);
         a.start();
-        b = MyProcess(runPolygonHalton, fieldSize, polygonFile, rotate);
+        seed += 1;
+        b = MyProcess(seed, runPolygonExperiment, "halton", polygonFile, description, rotation, fieldSize, caseStudiesDirectory, numRepeats = globalHighNumRepeats);
         b.start();
-        c = MyProcess(runPolygonHexLike, fieldSize, polygonFile, rotate);
+        seed += 1;
+        c = MyProcess(seed, runPolygonExperiment, "hexlike", polygonFile, description, rotation, fieldSize, caseStudiesDirectory, numRepeats = globalHighNumRepeats);
         c.start();
-        d = MyProcess(runPolygonStaggerXY, fieldSize, polygonFile, rotate);
+        seed += 1;
+        d = MyProcess(seed, runPolygonExperiment, "staggerXY", polygonFile, description, rotation, fieldSize, caseStudiesDirectory, numRepeats = globalHighNumRepeats);
         d.start();
-        e = MyProcess(runPolygonRandomisedStaggerXY, fieldSize, polygonFile, 8, rotate);
+        seed += 1;
+        e = MyProcess(seed, runPolygonExperiment, "randomisedStaggerXY sd8", polygonFile, description, rotation, fieldSize, caseStudiesDirectory, numRepeats = globalHighNumRepeats);
         e.start();
 
         a.join();
@@ -1070,27 +799,35 @@ def generatePolygonData(fieldSize:int, polygonFile:str, rotate:bool = False):
         progress.update(task, advance=10100)
 
 
+# This is not used but included in case it is needed in future
+#
 # Runs experiments for various layout algorithms using the given fieldSize and siteArea.
-# Experiments are run for each treasure height in height (the width is determined by
-# the height and the siteArea). This can include treasure that is very elongated.
+# Experiments are run for each treasure short side in shortSides (the long side is
+# determined by the short side and the siteArea). This can include treasure that is very elongated.
 # Data is stored in the largeRatioDirectory subdirectory of the data directory,
-# in the filenames specified in the comments for the run...() functions.
+# in the filenames specified in the comments for the get...FileName() functions.
 # The data are used in the summary analysis (similar to generateSummaryData() - 
 # see those comments for details).
-def generateLargeRatioData(fieldSize:int, siteArea:int, height:list) -> None:
+# seed is the random number generator seed to begin with.
+def generateLargeRatioData(fieldSize:int, siteArea:int, shortSides:list, seed:int) -> None:
     progress_columns = (
         "[progress.description]{task.description}",
         BarColumn());
     
-    for h in height:
+    rotation = 0;
+    for s in shortSides:
+        longSide = siteArea/s;
         with Progress(*progress_columns) as progress:    
-            task = progress.add_task("generating height = " + str(h) + " site area = " + str(siteArea), total=10100, start=False);
+            task = progress.add_task("generating short side = " + str(s) + " site area = " + str(siteArea), total=10100, start=False);
 
-            a = MyProcess(runElongatedRandom, fieldSize, siteArea/h, h, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats);
+            seed += 1;
+            a = MyProcess(seed, runRectangularExperiment, "random", longSide, s, rotation, fieldSize, siteArea, largeRatioDirectory, smallNumHolesRepeats = globalNumRepeats);
             a.start();
-            b = MyProcess(runElongatedHalton, fieldSize, siteArea/h, h, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats)
+            seed += 1;
+            b = MyProcess(seed, runRectangularExperiment, "halton", longSide, s, rotation, fieldSize, siteArea, largeRatioDirectory, smallNumHolesRepeats = globalNumRepeats);
             b.start();
-            c = MyProcess(runRandomisedStaggerXY, fieldSize, siteArea/h, h, 8, siteArea, dir=largeRatioDirectory, smallNumHolesNumRepeats = globalNumRepeats);
+            seed += 1;
+            c = MyProcess(seed, runRectangularExperiment, "randomisedStaggerXY sd8", longSide, s, rotation, fieldSize, siteArea, largeRatioDirectory, smallNumHolesRepeats = globalNumRepeats);
             c.start();
 
             a.join();
@@ -1101,176 +838,294 @@ def generateLargeRatioData(fieldSize:int, siteArea:int, height:list) -> None:
             progress.update(task, advance=10100)
 
 
-# Generates treasure heights for the given siteArea, over a range of elongation ratios.
-# Heights are generated for both horizontally and vertically elongated treasure (starting with vertical).
-# The maximum elongation ratio is ratioEnd.
+# Generate success data to be used in the rotation summary graphs. Treasures are
+# rectangles of the given elongationRatio. Success data is generated for orientations
+# from -90 degrees to 90 degrees, in steps of 7.5 degrees.
+# seed is the random number generator seed to begin with.
+def generateRotationData(fieldSize:int, siteArea:int, elongationRatio:float, seed:int):
+    progress_columns = (
+        "[progress.description]{task.description}",
+        BarColumn());
+    
+    angles = [i * 7.5 for i in range(-12, 13)];
+    for angle in angles:
+        angle = round(angle, 1);
+        with Progress(*progress_columns) as progress:    
+            task = progress.add_task("generating ratio = " + str(elongationRatio) + " rotation = " + str(angle) + " site area = " + str(siteArea), total=10100, start=False);
+
+            shortSide = math.sqrt(siteArea / elongationRatio);
+            longSide = siteArea/shortSide;
+
+            seed += 1;
+            a = MyProcess(seed, runRectangularExperiment, "random", longSide, shortSide, angle, fieldSize, siteArea, rotationDirectory);
+            a.start();
+            seed += 1;
+            b = MyProcess(seed, runRectangularExperiment, "halton", longSide, shortSide, angle, fieldSize, siteArea, rotationDirectory);
+            b.start();
+            seed += 1;
+            c = MyProcess(seed, runRectangularExperiment, "hexlike", longSide, shortSide, angle, fieldSize, siteArea, rotationDirectory);
+            c.start();
+            seed += 1;
+            d = MyProcess(seed, runRectangularExperiment, "staggerXY", longSide, shortSide, angle, fieldSize, siteArea, rotationDirectory);
+            d.start();
+            seed += 1;
+            e = MyProcess(seed, runRectangularExperiment, "randomisedStaggerXY sd8", longSide, shortSide, angle, fieldSize, siteArea, rotationDirectory);
+            e.start();
+
+            a.join();
+            b.join();
+            c.join();
+            d.join();
+            e.join();
+            
+            progress.start_task(task);
+            progress.update(task, advance=10100)
+
+
+# Generates data for randomised treasure experiments. Here the treasure is of random
+# area, length, and orientation, and is different in each iteration of the experiment.
+# Data are stored in the randomisedTreasureDirectory subdirectory of the data directory.
+def generateRandomisedTreasureData(fieldSize:int, seed:int):
+    progress_columns = (
+        "[progress.description]{task.description}",
+        BarColumn());
+
+    with Progress(*progress_columns) as progress:
+
+        task = progress.add_task("generating randomised treasure field size = " + str(fieldSize), total=10100, start=False);
+        a = MyProcess(seed, runRandomisedTreasureExperiment, "random", fieldSize, randomisedTreasureDirectory);
+        a.start();
+        seed += 1;
+        b = MyProcess(seed, runRandomisedTreasureExperiment, "halton", fieldSize, randomisedTreasureDirectory);
+        b.start();
+        seed += 1;
+        c = MyProcess(seed, runRandomisedTreasureExperiment, "hexlike", fieldSize, randomisedTreasureDirectory);
+        c.start();
+        seed += 1;
+        d = MyProcess(seed, runRandomisedTreasureExperiment, "staggerXY", fieldSize, randomisedTreasureDirectory);
+        d.start();
+        seed += 1;
+        e = MyProcess(seed, runRandomisedTreasureExperiment, "randomisedStaggerXY sd8", fieldSize, randomisedTreasureDirectory);
+        e.start();
+
+        a.join();
+        b.join();
+        c.join();
+        d.join();
+        e.join();
+        
+        progress.start_task(task);
+        progress.update(task, advance=10100)
+
+
+# Generates treasure short sides for the given siteArea, over a range of elongation ratios,
+# to be used in summary graphs (in which the log of the ratio is the x axis).
+# The elongations range from 1 to ratioEnd.
 # While the log of the ratio is less than one, the log is incremented by lowRatioInterval.
 # After that it is incremented by highRatioInterval.
-def generateHeightsIntervals(siteArea:int, ratioEnd=40, lowRatioInterval = 0.1, highRatioInterval = 0.2) -> list:
-    heights = [];
-    smallHeights = [];
+def generateShortSides(siteArea:int, ratioEnd=40, lowRatioInterval = 0.1, highRatioInterval = 0.2) -> list:
+    shortSides = [];
     end = math.log(ratioEnd, 10);
     logratio = 0;
     while logratio < end:
         ratioToOne = 10**logratio;
-        heights.append(math.sqrt(ratioToOne * siteArea));
-        if logratio < 1:
+        shortSides.append(math.sqrt(siteArea/ratioToOne));
+        if round(logratio, 2) < 1:
             logratio += lowRatioInterval;
         else:
             logratio += highRatioInterval;
     ratioToOne = ratioEnd;
-    heights.append(math.sqrt(ratioToOne * siteArea));
-    heights.reverse();
-    for m in range(len(heights) - 2, -1, -1):
-        smallHeights.append(siteArea/heights[m]);
-    allHeights = heights + smallHeights;
-    return allHeights
+    shortSides.append(math.sqrt(siteArea/ratioToOne));
+    return shortSides;
 
 
 # GO DATA FUNCTIONS
 # These functions perform all experiments for the various analyses used in the paper.
 # The corresponding generate...Data() functions are called.
-# Some take a long time, so if running all these functions leave it running overnight.
-# It takes around 40 hours to run all of these on a fast computer.
+# Some take a long time. It takes over 13.35 hours to run all of these on a fast computer.
 # It could take days on an older or slower computer.
 
-# this takes 22 hours on a fast computer
+# this takes 3.4 hours on a fast computer
 def goSummaryData():
     print("GENERATING SUMMARY DATA");
-    current_datetime = datetime.now();
-    print(current_datetime);
+    startDatetime = datetime.now();
+    print(startDatetime);
     
+    seed = 1;
     for fieldSize in [100]:
-        for siteArea in [20, 100, 200]:
-            generateSummaryData(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15));
-            current_datetime = datetime.now();
-            print(current_datetime);
-    for fieldSize in [150, 200]:
         for siteArea in [100]:
-            generateSummaryData(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15));
-            current_datetime = datetime.now();
-            print(current_datetime);
+            for rotation in [0, 30, 60, 90]:
+                seed += 1000;
+                generateSummaryData(fieldSize, siteArea, generateShortSides(siteArea, 40, 0.1, 0.15), rotation, seed);
+                currentDatetime = datetime.now();
+                print(currentDatetime);
+        # for siteArea in [20, 200]:
+        #     for rotation in [0, 90]:
+        #         generateSummaryData(fieldSize, siteArea, generateShortSides(siteArea, 40, 0.1, 0.15), rotation);
+        #         currentDatetime = datetime.now();
+        #         print(currentDatetime);
+    endDatetime = datetime.now();
+    print("Summary experiments took", endDatetime - startDatetime);
 
 # this takes 15 hours on a fast computer
+# not used in the paper
 def goLargeRatioData():
     print("GENERATING LARGE RATIO DATA");
-    current_datetime = datetime.now();
-    print(current_datetime);
-    generateLargeRatioData(100, 20, generateHeightsIntervals(20, 500, 0.1, 0.2));
-    current_datetime = datetime.now();
-    print(current_datetime);
+    currentDatetime = datetime.now();
+    print(currentDatetime);
+    generateLargeRatioData(100, 20, generateShortSides(20, 500, 0.1, 0.2), 100000);
+    currentDatetime = datetime.now();
+    print(currentDatetime);
 
-# this takes 55 minutes on a fast computer
-# this was not used in the paper and still needs testing
-def goSpecificNumberOfHolesData():
-    print("GENERATING SPECIFIC NUMBER OF HOLES DATA");
-    current_datetime = datetime.now();
-    print(current_datetime);
-    for fieldSize in [100]:
-        for siteArea in [20, 100, 200]:
-            for holes in [25, 48, 99]:
-                generateSpecificNumberOfHolesData(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), holes, specificHolesDirectory);
-                current_datetime = datetime.now();
-                print(current_datetime);
+# this takes 1 hour on a fast computer.
+def goSuccessData():
+    print("GENERATING SUCCESS DATA");
+    startDatetime = datetime.now();
+    print(startDatetime);
+    generateSuccessData(100, 200000);
+    endDatetime = datetime.now();
+    print(endDatetime);
+    print("Succes experiments took", endDatetime-startDatetime);
 
-# this takes 30 minutes on a fast computer.
-# Also known as "drilldown" experiments.
-def goSpecificRatioData():
-    print("GENERATING SPECIFIC RATIO DATA");
-    current_datetime = datetime.now();
-    print(current_datetime);
-    generateSpecificRatioData(100);
-    current_datetime = datetime.now();
-    print(current_datetime);
 
-# this takes 40 minutes on a fast computer
-def goRealWorldData():
-    print("GENERATING REAL WORLD DATA");
-    current_datetime = datetime.now();
-    print(current_datetime);
-    generatePolygonData(100, "Woorong Park Residual Rise 1.zip", rotate=False);
-    current_datetime = datetime.now();
-    print(current_datetime);
-    generatePolygonData(100, "Woorong Park Residual Rise 1.zip", rotate=True);
-    current_datetime = datetime.now();
-    print(current_datetime);
+# this takes 2 hours on a fast computer
+def goCaseStudiesData():
+    print("GENERATING CASE STUDIES DATA");
+    startDatetime = datetime.now();
+    print(startDatetime);
+    seed = 300000;
+    for rotation in [0, 30, 60, 90]:
+        seed += 1000;
+        generatePolygonData(100, "High Elongation Site Form.zip", "highelongation", rotation, seed);
+        seed += 1000;
+        generatePolygonData(100, "Moderate Elongation Site Form.zip", "moderateelongation", rotation, seed);
+        seed += 1000;
+        generatePolygonData(100, "Low Elongation Site Form.zip", "lowelongation", rotation, seed);
+    endDatetime = datetime.now();
+    print(endDatetime);
+    print("Case studies experiments took", endDatetime-startDatetime);
+
+# This takes 3.8 hours on a fast computer
+def goRotationData():
+    print("GENERATING ROTATION DATA");
+    startDatetime = datetime.now();
+    print(startDatetime);
+    seed = 400000;
+    generateRotationData(100, 100, 1, seed);
+    currentDatetime = datetime.now();
+    print(currentDatetime);
+    seed += 1000;
+    generateRotationData(100, 100, 5, seed);
+    currentDatetime = datetime.now();
+    print(currentDatetime);
+    seed += 1000;
+    generateRotationData(100, 100, 20, seed);
+    endDatetime = datetime.now();
+    print(endDatetime);
+    print("Rotation experiments took", endDatetime-startDatetime);
+
+# this takes TODO
+def goRandomisedTreasureData():
+    print("GENERATING RANDOM TREASURE DATA");
+    seed = 500000;
+    startDatetime = datetime.now();
+    print(startDatetime);
+    generateRandomisedTreasureData(100, seed);
+    # currentDatetime = datetime.now();
+    # print(currentDatetime);
+    # seed += 1000;
+    # generateRandomisedTreasureData(50, seed);
+    # currentDatetime = datetime.now();
+    # print(currentDatetime);
+    # seed += 1000;
+    # generateRandomisedTreasureData(150, seed);
+    endDatetime = datetime.now();
+    print(endDatetime);
+    print("Random treasure experiments took", endDatetime-startDatetime);
 
 
 # GO GRAPH FUNCTIONS
-# These functions generate graphs for the various analyses used in the paper.
+# These functions generate graphs and tables for the various analyses in the paper.
 # The corresponding generate...() functions for graphs and tables are called.
 
-def goSpecificRatioGraphs():
-    print("generating specific ratio graphs...");
-    generateSpecificRatioGraphs(100);
+def goSuccessGraphs():
+    print("generating success graphs...");
+    generateSuccessGraphs(100);
 
 def goSummaryGraphs():
     print("generating summary graphs...");
+    maximumHoles = 2250;
     for fieldSize in [100]:
-        for siteArea in [20, 100, 200]:
-            if siteArea == 20:
-                minY = 93;
-            elif siteArea == 100:
-                minY = 98.5;
-            elif siteArea == 200:
-                minY = 99.1;
-            generateSummaryGraph(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), maximumHoles=6000, minFieldName="random", zoomCentral=True, showGraph=False, minY = minY);
-    generateSummaryGraph(fieldSize, 100, generateHeightsIntervals(100, 40, 0.1, 0.15), maximumHoles=6000, minFieldName="random", zoomCentral=False, showGraph=False);
-    # generate summary data for other field sizes, used in the crossover analysis. saveGraph is False.
-    generateSummaryGraph(100, 100, generateHeightsIntervals(100, 40, 0.1, 0.15), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
-    generateSummaryGraph(150, 100, generateHeightsIntervals(100, 40, 0.1, 0.15), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
-    generateSummaryGraph(200, 100, generateHeightsIntervals(100, 40, 0.1, 0.15), False, True, "random", True, 9000, summaryDirectory, saveGraph = False);
+        #for siteArea in [20, 100, 200]:
+        for siteArea in [100]:
+            for rotation in [0, 30, 60, 90]:
+                minY = None;
+                maxY = None;
+                if rotation == 0 or rotation == 90:
+                    minY = 96;
+                    maxY = 98.25;
+                generateSummaryGraph(fieldSize, siteArea, generateShortSides(siteArea, 40, 0.1, 0.15), rotation, maximumHoles=maximumHoles, minFieldName="random", zoomCentral=True, showGraph=False, minY = minY, maxY = maxY);
+    generateSummaryGraph(fieldSize, 100, generateShortSides(100, 40, 0.1, 0.15), 0, maximumHoles=maximumHoles, minFieldName="random", zoomCentral=False, showGraph=False, maxY = 100);
+
+def goRotationGraphs():
+    print("generating rotation graphs...");
+    for ratio in [1, 5, 20]:
+        generateRotationGraph(100, 100, ratio, 1250);
+
+def goRandomisedTreasureGraphs():
+    print("generating randomised treasure graphs...");
+    generateRandomisedTreasureGraphs(100);
 
 # note: summary graphs must be generated before calling this function
-def goCrossoverTables():
-    print("generating crossover tables and graphs...");
-    generateCrossoverTableAndGraph(100, [20, 100, 200], ["hexlike", "staggerXY", "randomisedStaggerXY8"], True);
-    generateCrossoverTableAndGraph(100, [20, 100, 200], ["hexlike", "staggerXY", "randomisedStaggerXY8"], False);
-
-    generateFieldSizeCrossoverTable([100, 150, 200], 100, ["hexlike", "staggerXY", "randomisedStaggerXY8"], True);
-    generateFieldSizeCrossoverTable([100, 150, 200], 100, ["hexlike", "staggerXY", "randomisedStaggerXY8"], False);
+def goCrossoverTable():
+    print("generating summary crossover table...");
+    generateCrossoverTable(100, 100, ["hexlike", "staggerXY", "randomisedStaggerXY8"]);
 
 def goLargeRatioGraphs():
     print("generating large ratio graphs...");
-    generateSummaryGraphLargeRatio(100, 20, generateHeightsIntervals(20, 500, 0.1, 0.2), False);
+    generateSummaryGraphLargeRatio(100, 20, generateShortSides(20, 500, 0.1, 0.2), False);
 
 def goSmallNumberOfHolesGraphs():
     print("generating small number of holes graph...");
-    for siteArea in [20, 100, 200]:
-        minY = None;
-        if siteArea == 100:
-            minY = 14;
-        elif siteArea == 200:
-            minY = 26;
-        generateSummaryGraph(100, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), zoomCentral=True, minFieldName="random", maximumHoles=25, dir = summaryDirectory, outputDir = smallHolesDirectory, compileData=True, showGraph = False, suppressNumHoleWarning=True, minY = minY);
+    for siteArea in [100]:
+        for rotation in [0, 30, 60, 90]:
+            minY = None;
+            if rotation == 0 or rotation == 90:
+                if siteArea == 100:
+                    minY = 14;
+                # currently only siteArea of 100 is used but keep this in case
+                elif siteArea == 200:
+                    minY = 26;
+            if rotation == 30 or rotation == 150:
+                if siteArea == 200:
+                    minY = 28;
+            generateSummaryGraph(100, siteArea, generateShortSides(siteArea, 40, 0.1, 0.15), rotation, zoomCentral=True, minFieldName="random", maximumHoles=25, dir = summaryDirectory, outputDir = smallHolesDirectory, compileData=True, showGraph = False, suppressNumHoleWarning=True, minY = minY);
 
-# this is not used in the paper and still needs testing
-def goSpecificNumberOfHolesGraphs():
-    print("generating specific number of holes graphs,,,");
-    for fieldSize in [100]:
-        for siteArea in [20, 100, 200]:
-            for holes in [25, 48, 99]:
-                generateSpecificNumberOfHolesGraph(fieldSize, siteArea, generateHeightsIntervals(siteArea, 40, 0.1, 0.15), holes, specificHolesDirectory);
+def goCaseStudiesGraphs():
+    print("generating case studies polygon graphs...");
+    for rotation in [0, 30, 60, 90]:
+        generatePolygonSuccessGraph(100, "highelongation", rotation, zoom=False);
+        generatePolygonSuccessGraph(100, "moderateelongation", rotation, zoom=False);
+        generatePolygonSuccessGraph(100, "lowelongation", rotation, zoom=False);
 
-def goRealWorldGraphs():
-    print("generating real world polygon graphs...");
-    generatePolygonSuccessGraph(100, zoom=False, rotate=False);
-    generatePolygonSuccessGraph(100, zoom=False, rotate=True);
-    generatePolygonSuccessGraph(100, zoom=True, rotate=False);
-    generatePolygonSuccessGraph(100, zoom=True, rotate=True);
+        generatePolygonSuccessGraph(100, "highelongation", rotation, zoom=True);
+        generatePolygonSuccessGraph(100, "moderateelongation", rotation, zoom=True);
+        generatePolygonSuccessGraph(100, "lowelongation", rotation, zoom=True);
 
 def goCostGraphs():
     print("generating cost graphs...");
     generateCostGraphs(100);
 
-def goSpecificRatioHolesForSuccessRatesTables():
-    print("generating specific ratio holes for success rates tables...");
-    generateSpecificRatioHolesForSuccessRatesTables(100, 100);
+def goSuccessHolesForSuccessRatesTables():
+    print("generating success holes for success rates tables...");
+    generateSuccessHolesForSuccessRatesTables(100, 100);
 
-def goRealWorldHolesForSuccessRatesTables():
-    print("generating real world holes for success rates tables...");
-    generatePolygonHolesForSuccessRatesTables(100, False);
-    generatePolygonHolesForSuccessRatesTables(100, True);
+def goCaseStudyHolesForSuccessRatesTables():
+    print("generating case studies holes for success rates tables...");
+    for rotation in [0, 90]:
+        generatePolygonHolesForSuccessRatesTables(100, "highelongation", rotation);
+        generatePolygonHolesForSuccessRatesTables(100, "moderateelongation", rotation);
+        generatePolygonHolesForSuccessRatesTables(100, "lowelongation", rotation);
 
 def goMaximumDifferenceInSuccessTable():
     print("generating maximum difference in success table...");
@@ -1283,82 +1138,94 @@ if __name__ == '__main__':
     # go variables
     # Set these to True to run the experiments in the given category and generate data.
     # Some "go" data functions take a very long time. If setting all to True
-    # be prepared to wait around 40 hours on a fast computer.
+    # be prepared to wait around 13.35 hours on a fast computer.
     # It could take days on an older or slower computer.
     
-    # this takes 30 minutes on a fast computer. Also known as "drilldown" experiments:
-    goSpecificRatio = False;
-    # this takes 22 hours on a fast computer:
+    # this takes 1 hour on a fast computer.
+    goSuccess = False;
+    # this takes 3.4 hours on a fast computer:
     goSummary = False;
-    # this takes 15 hours on a fast computer:
-    goLargeRatio = False;
-    # this takes 40 minutes on a fast computer:
-    goRealWorld = False;
+    # this takes 2 hours on a fast computer:
+    goCaseStudies = False;
+    # this takes 3.8 hours on a fast computer:
+    goRotation = False;
+    # this takes 3.15 hours on a fast computer
+    goRandomisedTreasure = False;
 
-    goGraphsAndTables = True;
+    goGraphsAndTables = False;
 
-    goPrintExperiments = False;
+    goPrintExperiments = True;
 
-    if not(goSpecificRatio or goSummary or goLargeRatio or goRealWorld) and goGraphsAndTables:
+    if not(goSuccess or goSummary or goCaseStudies or goRotation or goRandomisedTreasure) and goGraphsAndTables:
         print("USING PRE-GENERATED DATA.");
         print("To generate your own data set the appropriate \"go\" variables to True in LayoutExperiments.py.");
-        print("Generating all data may take over 40 hours on a fast computer,")
+        print("Generating all data may take over 13.35 hours on a fast computer,")
         print("and could take days on an older or slower computer.");
         print();
         print("Generating graphs and tables will take under a minute on a fast computer.");
         print();
     
     runtime = 0;
-    if goSpecificRatio:
-        runtime += 30/60;
+    if goSuccess:
+        runtime += 1;
     if goSummary:
-        runtime += 22;
-    if goLargeRatio:
-        runtime += 15;
-    if goRealWorld:
-        runtime += 40/60
+        runtime += 3.4;
+    if goCaseStudies:
+        runtime += 2;
+    if goRotation:
+        runtime += 3.8;
+    if goRandomisedTreasure:
+        runtime += 3.15;
 
-    if goSpecificRatio or goSummary or goLargeRatio or goRealWorld:
+    if goSuccess or goSummary or goCaseStudies or goRotation or goRandomisedTreasure:
         print("GENERATING DATA");
         print("This will take around " + str(round(runtime, 1)) + " hours on a fast computer");
         print();
 
-    if goSpecificRatio:
-        goSpecificRatioData();
+    if goSuccess:
+        goSuccessData();
     if goSummary:
         goSummaryData();
-    if goLargeRatio:
-        goLargeRatioData();
-    if goRealWorld:
-        goRealWorldData();
+    if goCaseStudies:
+        goCaseStudiesData();
+    if goRotation:
+        goRotationData();
+    if goRandomisedTreasure:
+        goRandomisedTreasureData();
 
     if goGraphsAndTables:
-        goSpecificRatioGraphs();
+        createLegend();
+        goSuccessGraphs();
         goSummaryGraphs();
-        goCrossoverTables();
-        goLargeRatioGraphs();
+        goCrossoverTable();
         goSmallNumberOfHolesGraphs();
-        goRealWorldGraphs();
-        # goCostGraphs();
-        goSpecificRatioHolesForSuccessRatesTables();
-        goRealWorldHolesForSuccessRatesTables();
+        goCaseStudiesGraphs();
+        goSuccessHolesForSuccessRatesTables();
+        goCaseStudyHolesForSuccessRatesTables();
         goMaximumDifferenceInSuccessTable();
+        goRotationGraphs();
+        goRandomisedTreasureGraphs();
+        printMaximumDifferenceInSucessForRandomTreasure(100);
 
     if goPrintExperiments:
-        print("Printing experiments to the printedFields directory...")
-        runElongatedHexLike(100, 10, 10, 100, printExperimentHoles=42);
-        runElongatedHalton(100, 10, 10, 100, printExperimentHoles=42);
-        runElongatedRandom(100, 10, 10, 100, printExperimentHoles=42);
-        runElongatedStaggerXY(100, 10, 10, 100, printExperimentHoles=42);
-        runRandomisedStaggerXY(100, 10, 10, 8, 100, printExperimentHoles=42);
-        runPolygonHexLike(100, "Woorong Park Residual Rise 1.zip", printExperimentHoles=42);
-        runPolygonHexLike(100, "Woorong Park Residual Rise 1.zip", rotate=True, printExperimentHoles=42);
-        runPolygonStaggerXY(100, "Woorong Park Residual Rise 1.zip", printExperimentHoles=42);
-        runPolygonStaggerXY(100, "Woorong Park Residual Rise 1.zip", rotate=True, printExperimentHoles=42);
-        runPolygonRandomisedStaggerXY(100, "Woorong Park Residual Rise 1.zip", 8, printExperimentHoles=42);
-        runPolygonRandomisedStaggerXY(100, "Woorong Park Residual Rise 1.zip", 8, rotate=True, printExperimentHoles=42);
-        runPolygonHalton(100, "Woorong Park Residual Rise 1.zip", printExperimentHoles=42);
-        runPolygonHalton(100, "Woorong Park Residual Rise 1.zip", rotate=True, printExperimentHoles=42);
-        runPolygonRandom(100, "Woorong Park Residual Rise 1.zip", printExperimentHoles=42);
-        runPolygonRandom(100, "Woorong Park Residual Rise 1.zip", rotate=True, printExperimentHoles=42);
+        print("Printing experiments to the printedFields directory...");
 
+        # the various algorithms at 0 rotation
+        runRectangularExperiment("hexlike", 20, 5, 0, 100, 100, "", printExperimentHoles = 42);
+        runRectangularExperiment("staggerXY", 20, 5, 0, 100, 100, "", printExperimentHoles = 42);
+        runRectangularExperiment("randomisedStaggerXY sd8", 20, 5, 0, 100, 100, "", printExperimentHoles = 42);
+        runRectangularExperiment("random", 20, 5, 0, 100, 100, "", printExperimentHoles = 42);
+        runRectangularExperiment("halton", 20, 5, 0, 100, 100, "", printExperimentHoles = 42);
+
+        # halton at various rotations
+        runRectangularExperiment("halton", 20, 5, 30, 100, 100, "", printExperimentHoles = 42);
+        runRectangularExperiment("halton", 20, 5, 60, 100, 100, "", printExperimentHoles = 42);
+        runRectangularExperiment("halton", 20, 5, 90, 100, 100, "", printExperimentHoles = 42);
+
+        # case studies at 0 rotation
+        runPolygonExperiment("staggerXY", "Low Elongation Site Form.zip", "lowelongation", 0, 100, "", printExperimentHoles = 42);
+        runPolygonExperiment("staggerXY", "Moderate Elongation Site Form.zip", "moderateelongation", 0, 100, "", printExperimentHoles = 42);
+        runPolygonExperiment("staggerXY", "High Elongation Site Form.zip", "highelongation", 0, 100, "", printExperimentHoles = 42);
+
+        # randomised treasure
+        runRandomisedTreasureExperiment("staggerXY", 100, "", printExperimentHoles=42);
