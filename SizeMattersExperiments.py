@@ -17,11 +17,14 @@
 
 # See the "README.md" file for information, and installation and usage instructions.
 
+# NOTE: THIS FILE IS NOT CURRENTLY SUPPORTED AS A MAIN FILE FOR THE HOLES PROJECT
 
 # This is a main file for the Holes project, used in the Size Matters article.
 # It contains code to run Experiments on the ExperimentRunner implemented
 # in ExperimentRunner.py. It also contains code to plot graphs and tables using Plotter.py.
 # Tables contain results of data analysis using Tables.py.
+
+# Treasure is placed wholly within the Field.
 
 # Data produced is stored in the "data/sizematters" directory and graphs and tables in the 
 # "graphs/sizematters" directory
@@ -56,7 +59,6 @@ class BasicExperiment(Experiment):
         self.mSmallNumHolesNumRepeatsCutoff = 40;
         self.mStopAtSuccess = 100;
         self.mReturnAfterHit = True;
-        self.mLRBorder = True;
         self.mOutputFileName = sizeMattersDirectory + "/experiment.csv"
         self.mTreasureManager = treasureManager;
     
@@ -106,16 +108,23 @@ class BasicExperiment(Experiment):
         return self.mStopAtSuccess;
 
     # see Experiment class for details
-    def getLRBorder(self) -> bool:
-        return self.mLRBorder;
-
-    # see Experiment class for details
     def getOutputFileName(self) -> str:
         return self.mOutputFileName;
 
     # see Experiment class for details
+    def getPrintedFieldFileName(self, holesDug:int) -> str:
+        holesDugString = "";
+        if holesDug != None:
+            holesDugString = " holes " + str(holesDug);
+        return self.mTreasureManager.getTreasureDescription() + " " + self.getPlayerName() + holesDugString + " fieldsize " + str(self.mFieldSize) + " holesize " + str(self.mHoleSize);
+
+    # see Experiment class for details
+    def getPlayerName(self) -> str:
+        return "Hexagonal-like";
+
+    # see Experiment class for details
     def getPlayer(self, field:Field, holes:int) -> Player:
-        return HexagonalLikePlayer(field, self.mHoleSize, holes, self.mLRBorder, False);
+        return HexagonalLikePlayer(field, self.mHoleSize, holes, True, False, TBBorder=True);
 
     # see Experiment class for details
     def getTreasureManager(self) -> TreasureManager:
@@ -220,7 +229,7 @@ def run1mCircle100mField(printExperimentHoles:int = None):
 # printExperimentHoles is the number of holes to use when printing the experiment field.
 # NOTE that when printExperimentHoles is defined, the experiments will not be run, only printed.
 def run20x5mRectangle100mField(printExperimentHoles:int = None):
-    treasureManager = RectangularTreasureManager(20, 5, 0);
+    treasureManager = RectangularTreasureManager(20, 5, 0, True);
     experiment = BasicExperiment(treasureManager);
     experiment.mOutputFileName = sizeMattersDirectory + "/20x5mRectangle 100mField 0.5mPits.csv";
     runner = ExperimentRunner(experiment);
@@ -310,21 +319,22 @@ def generateData():
 
     # DETECTION (REAL WORLD DATA) EXPERIMENTS:
 
+    realWorldDataDirectory = HolesDictionary.getRealWorldDataDirectoryName();
     with Progress(*progress_columns) as progress:
         task = progress.add_task("generating low density...", total=10100, start=False);
-        runRealWorldExperiment("real world data/Low Density Artefact Coordinates.csv", "LowDensity");
+        runRealWorldExperiment(realWorldDataDirectory + "/Low Density Artefact Coordinates.csv", "LowDensity");
         progress.start_task(task);
         progress.update(task, advance=10100);
     
     with Progress(*progress_columns) as progress:
         task = progress.add_task("generating moderate density...", total=10100, start=False);
-        runRealWorldExperiment("real world data/Moderate Density Artefact Coordinates.csv", "ModerateDensity");
+        runRealWorldExperiment(realWorldDataDirectory + "/Moderate Density Artefact Coordinates.csv", "ModerateDensity");
         progress.start_task(task);
         progress.update(task, advance=10100);
 
     with Progress(*progress_columns) as progress:
         task = progress.add_task("generating high density...", total=10100, start=False);
-        runRealWorldExperiment("real world data/High Density Artefact Coordinates.csv", "HighDensity");
+        runRealWorldExperiment(realWorldDataDirectory + "/High Density Artefact Coordinates.csv", "HighDensity");
         progress.start_task(task);
         progress.update(task, advance=10100);
 
@@ -433,18 +443,23 @@ def generateGraphsAndTables():
 
 if __name__ == "__main__":
 
+    print("This file is not currently supported.\n" + \
+    "\"Size Matters\" experiments will be supported when the paper is ready for submission.\n" +\
+    "For now run LayoutExperiments.py.");
+    exit(0);
+    
     # Set goData to True to generate your own data.
     # It may take over 1 hour and 45 miutes on a fast computer.
     goData = False;
     
     # Set to True to generate the graphs and tables
-    goGraphsAndTables = False;
+    goGraphsAndTables = True;
 
     # Set to True to print examples of the experiments to files.
     # These files will be stored in the "printedFields" directory
     # and can be read by CreateFieldImage.py to create graphical depictions
     # of the experiments
-    goPrintExperiments = True;
+    goPrintExperiments = False;
     
     if goData:
         random.seed(123);
@@ -464,12 +479,13 @@ if __name__ == "__main__":
         generateGraphsAndTables();
 
     if goPrintExperiments:
-        print("Printing experiments to the printedFields directory...")
+        print("Printing experiments to the printedFields directory...");
+        random.seed(112358);
         run1mCircle100mField(printExperimentHoles=120);
         run20x5mRectangle100mField(printExperimentHoles=120);
         run28mCircle100mField(printExperimentHoles=120);
         run7mCircle100mField(printExperimentHoles=120);
         run7mCircle200mField(printExperimentHoles=120);
-        runRealWorldExperiment("real world data/Low Density Artefact Coordinates.csv", "LowDensity", printExperimentHoles=120);
-        runRealWorldExperiment("real world data/Moderate Density Artefact Coordinates.csv", "ModerateDensity", printExperimentHoles=120);
-        runRealWorldExperiment("real world data/High Density Artefact Coordinates.csv", "HighDensity", printExperimentHoles=120);
+        runRealWorldExperiment(HolesDictionary.getRealWorldDataDirectoryName() + "/Low Density Artefact Coordinates.csv", "LowDensity", printExperimentHoles=120);
+        runRealWorldExperiment(HolesDictionary.getRealWorldDataDirectoryName() + "/Moderate Density Artefact Coordinates.csv", "ModerateDensity", printExperimentHoles=120);
+        runRealWorldExperiment(HolesDictionary.getRealWorldDataDirectoryName() + "/High Density Artefact Coordinates.csv", "HighDensity", printExperimentHoles=120);

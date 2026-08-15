@@ -45,7 +45,9 @@ class Field:
         self._treasure = None;
 
     # Place treasure on the field at a random location.
-    # The treasure lies wholly within the field.
+    # The treasure lies so that at least two thirds of at least two sides of its
+    # bounding box are within the field (so the bounding box centre is at least 
+    # one sixth the lengths of the relevant sides of the bounding box from the field edge)
     def placeTreasure(self, treasure:Treasure):
         self._treasure = treasure;
         self._treasure.placeRandomly(self.width, self.height);
@@ -96,7 +98,7 @@ class Field:
     # This can be then used by CreateFieldImage.py to print a graphical
     # representation of the field, holes, and treasure. See that
     # python file for a description of the field file format.
-    def print(self, fileName:str = ""):
+    def printField(self, fileName:str = ""):
         if fileName != "":
             output = open(fileName, 'w');
         else:

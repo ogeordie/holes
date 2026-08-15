@@ -42,8 +42,8 @@ class Hole:
         h2Bottom = anotherHole.centreY + anotherHole.height / 2;
         h2Right = anotherHole.centreX + anotherHole.width / 2;
 
-        xOverlaps = h2Left < h1Right and h2Right > h1Left;
-        yOverlaps = h2Top < h1Bottom and h2Bottom > h1Top;
+        xOverlaps = h2Left <= h1Right and h2Right >= h1Left;
+        yOverlaps = h2Top <= h1Bottom and h2Bottom >= h1Top;
 
         return xOverlaps and yOverlaps;
 

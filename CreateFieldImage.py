@@ -27,14 +27,15 @@
 # either be allNewHPFFiles or onlyNamedFile. Uncomment the mode you want and comment out
 # the other one. The allNewHPFFiles mode will display and create .png files for every .hpf
 # file in the printedFields directory that doesn't have a corresponding .png file that is more
-# recent. The onlyNamedFile mode will only display and create a png file for the file named in
+# recent. Each window displayed must be closed individually to cause the file to be saved.
+# The onlyNamedFile mode will only display and create a png file for the file named in
 # the filename variable. To use this second mode, paste the file name in the filename variable
 # just beneath the mode variable (search "set file name").
 
 # File format:
 # 
 # The first line is "field".
-# The second line is the field size: <x> <y>
+# The second line is the field size: <x> <y>, though we only support square fields.
 #
 # The third line is the treasure type, "rectangularTreasure", "polygonTreasure", "circularTreasure"
 # or "realworldTreasure"
@@ -87,7 +88,7 @@ mode = allNewHPFFiles;
 # to display when the mode is onlyNamedFile. Leave the printedFields directory in the file name.
 # The Image will be saved as "printedFields/<filename>.png".
 filename = "printedFields/\
-rectangle 20x5 Halton orientation 30 holes 10000 fieldsize 100 holesize 0.5\
+rectangle 20x5 orientation 0 Hexagonal-like holes 120 fieldsize 100 holesize 0.5\
 .hpf"
 
 # A kivy Widget that draws the holes and treasure defined in filename (above)
@@ -135,9 +136,7 @@ class CreateFieldImage(RelativeLayout):
             if not t.startswith("polygonTreasure") and not t.startswith("circularTreasure") and not t.startswith("rectangularTreasure"):
                 print("error: type of field not recognized");
             self.displayDefault(t);
-        # TODO
-        # l = Label(text = self.fileName, color = (0,0,0,1), font_size = 20, outline_color=(1, 1, 1), outline_width=1, pos_hint = {"center_x":0.05, "center_y":0.05});
-        # self.add_widget(l);
+        self.f.close();
     
     # display a field containing real world data on artefact distribution
     def displayRealWorld(self):
@@ -200,7 +199,7 @@ class CreateFieldImage(RelativeLayout):
             while len(line) > 0:
                 lineTokens = line.split();
                 if not(lineTokens[0].startswith("hole")):
-                    print("ERROR: expecting hole line");
+                    print("ERROR: expecting hole line in", self.fileName);
                     exit();
                 if lineTokens[5].startswith("True"):
                     Color(1, 0, 0);
@@ -258,14 +257,23 @@ class ContainerWidget(FloatLayout):
     def __init__(self, fileName, **kwargs):
         
         super().__init__(**kwargs)
-        Window.size = (1004/Metrics.density, 1004/Metrics.density);
+        Window.size = (1004/Metrics.density, 1025/Metrics.density);
         Window.top = 50;
         Window.left = 50;
         with self.canvas:
+            Color(1, 1, 1, 1);
+            Rectangle(pos = (0,0), size = (1004, 1025));
             Color(0, 0, 0);
-            Line(points=[0,0,1004,0, 1004, 1004, 0, 1004, 0,0], width=2);
+            Line(points=[0,1003,1003,1004], width = 1.5);
+            Line(points=[0, 1000, 0,0,1004,0, 1004, 1000], width=3);
 
         self.add_widget(CreateFieldImage(fileName, pos=(2,2)));
+        with self.canvas:
+            Color(1, 1, 1, 1);
+            Rectangle(pos = (0, 1004), size = (1004, 21));
+        filePath = Path(fileName);
+        l = Label(text = filePath.stem, color = (0,0,0,1), font_size = 14, pos_hint = {"center_x":0.5, "center_y":0.99});
+        self.add_widget(l);
 
 
 # A kivy app that creates the CreateFieldImage widget
@@ -289,6 +297,7 @@ class FieldApp(App):
 class Message(App):
     def build(self):
         Window.size = (400, 100);
+        self.title = "No Files Found";
         content = Label(text = "No new hpf files found.\nSee the printedFields directory for png files.", halign = "center");
         return content;
 

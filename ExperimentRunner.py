@@ -27,14 +27,15 @@ import random
 import math
 import traceback
 from pathlib import Path
-import re;
+import re
 from shapely import Polygon, Point
 from shapely.affinity import rotate
 from abc import abstractmethod
 from abc import ABC
 from Field import Field
-from Players import Player, HexagonalLikePlayer, HexagonalPlayer
+from Players import Player, HexagonalLikePlayer, HexagonalPlayer, HaltonPlayer, RandomPlayer
 from Treasure import TreasureManager, RectangularTreasure, RealWorldTreasureManager, CircularTreasureManager, RectangularTreasureManager, PolygonTreasureManager, RandomisedTreasureManager
+import numpy as np
 
 
 # A class that describes an experiment to be run in the ExperimentRunner.
@@ -118,19 +119,23 @@ class Experiment(ABC):
     def getReturnAfterHit(self) -> bool:
         pass;
 
-    # whether or not the layout algorithm should enforce left and right borders
-    # on the field in which no holes are dug (always True in the experiments
-    # reported in the papers). For Random and Halton players, this determines
-    # whether borders are made on all edges of the field.
-    @abstractmethod
-    def getLRBorder(self) -> bool:
-        pass;
-
     # the file to output the results of the simulation. The file will be
     # placed in the "data" directory. For example "sizematters/7mCircle 100mField 0.5mPits.csv".
     # This includes the subdirectory of the data directory in which to save the data.
     @abstractmethod
     def getOutputFileName(self) -> str:
+        pass;
+    
+    # the filename to output a printed field to if ExperimentRunner.printExperiment() is called.
+    # Doesn't include suffix.
+    # If holesDug is None it is omitted.
+    @abstractmethod
+    def getPrintedFieldFileName(self, holesDug:int) -> str:
+        pass;
+
+    # the name of the type of player returned by getPlayer().
+    @abstractmethod
+    def getPlayerName(self) -> str:
         pass;
 
     # get the Player that implements the layout algorithm chosen for
@@ -164,17 +169,7 @@ class ExperimentRunner:
 
     # print a description of the experiment to stdout    
     def printDescription(self):
-        experimentName = type(self.mExperiment).__name__;
-        if isinstance(self.treasureManager, RealWorldTreasureManager):
-            print("realworld, field:", self.fieldSize, "hole size:", self.holeSize, "experiment:", experimentName);
-        elif isinstance(self.treasureManager, CircularTreasureManager):
-            print("circle, field:", self.fieldSize, "hole size:", self.holeSize, "treasure radius:", self.treasureManager.getRadius(), "experiment:", experimentName);
-        elif isinstance(self.treasureManager, RectangularTreasureManager):
-            print("rectangle, field:", self.fieldSize, "hole size:", self.holeSize, "treasure dimensions:", str(self.treasureManager.getLongSide()) + "x" + str(self.treasureManager.getShortSide()), "rotation", self.treasureManager.getRotation(), "experiment:", experimentName);
-        elif isinstance(self.treasureManager, PolygonTreasureManager):
-            print("polygon field:", self.fieldSize, "hole size:", self.holeSize, "rotation", self.treasureManager.getRotation(), "experiment:", experimentName)
-        else:
-            print("error: unknown treasure type");
+        print(self.mExperiment.getPrintedFieldFileName(None));
 
     # creates the field and places treasure randomly
     def createFieldAndPlaceTreasure(self):
@@ -190,45 +185,22 @@ class ExperimentRunner:
         self.createFieldAndPlaceTreasure();
         player = self.mExperiment.getPlayer(self.field, numHoles);
         result = player.play(returnAfterHit=False);
-        self._printField(result[1], player.__class__.__name__);
+        if isinstance(player, HexagonalLikePlayer):
+            if player.layoutError:
+                print("layout algorithm error: probably too many holes for the field size");
+                self.printDescription();
+        self._printField(result[1]);
 
     # prints the given Field to a file in the "printedFields" directory.
     # This file can be read by CreateFieldImage.py to create a graphical
     # depiction of the field. See that file for details of the format.
-    def _printField(self, holesDug:int, playerClass:str):
-        experimentType = type(self.mExperiment).__name__;
-        if experimentType.startswith("HexagonalLike") or experimentType.startswith("Basic"):
-            playerType = "HexagonalLike";
-        elif experimentType.startswith("StaggerXY"):
-            playerType = "StaggerXY"
-        elif experimentType.startswith("RandomisedStaggerXY"):
-            playerType = "RandomisedStaggerXY"
-        elif playerClass.startswith("Random"):
-            playerType = "Random";
-        elif playerClass.startswith("Halton"):
-            playerType = "Halton";
-        
-        # create the file name
-        if isinstance(self.treasureManager, RealWorldTreasureManager):
-            fileName = self.treasureManager.getArtefactFileName();
-            p = Path(fileName);
-            firstWord = re.split(r'\.| ', p.name)[0];
-            filename = "realworld " + firstWord + " " + playerType + " holes " + str(holesDug) + " fieldsize " + str(self.fieldSize) + " holesize " + str(self.holeSize);
-        elif isinstance(self.treasureManager, CircularTreasureManager):
-            filename = "circular " + str(self.treasureManager.getRadius())  + " " + playerType + " holes " + str(holesDug) + " fieldsize " + str(self.fieldSize) + " holesize " + str(self.holeSize);
-        elif isinstance(self.treasureManager, RectangularTreasureManager):
-            filename = "rectangle " + str(self.treasureManager.getLongSide()) + "x" + str(self.treasureManager.getShortSide())  + " " + playerType + " orientation " + str(self.treasureManager.getRotation()) + " holes " + str(holesDug) + " fieldsize " + str(self.fieldSize) + " holesize " + str(self.holeSize);
-        elif isinstance(self.treasureManager, PolygonTreasureManager):
-            fileName = self.treasureManager.getShapeFileName();
-            caseStudy = fileName.removesuffix(".zip");
-            filename = "casestudy " + caseStudy + " " + playerType + " orientation " + str(self.treasureManager.getRotation()) + " holes " + str(holesDug) + " fieldsize " + str(self.fieldSize) + " holesize " + str(self.holeSize);
-        elif isinstance(self.treasureManager, RandomisedTreasureManager):
-            filename = "randomtreasure " + playerType + " holes " + str(holesDug) + " fieldsize " + str(self.fieldSize) + " holesize " + str(self.holeSize);
+    def _printField(self, holesDug:int):
+        filename = self.mExperiment.getPrintedFieldFileName(holesDug);
         filename = "printedFields/" + filename + ".hpf";
         outputFile = Path(filename);
         outputFile.parent.mkdir(exist_ok=True, parents=True);
         # print the field   
-        self.field.print(filename);
+        self.field.printField(filename);
     
     # prints the results of the simulation after numRepeats digs have been run
     # for a given number of holesDug (holes is the desired number of holes supplied
@@ -268,8 +240,6 @@ class ExperimentRunner:
         self.returnAfterHit = self.mExperiment.getReturnAfterHit();
 
         self.outputFileName = self.mExperiment.getOutputFileName();
-
-        self.LRBorder = self.mExperiment.getLRBorder();
 
     # Do an experiment simulating archaeological digs over range of hole numbers
     # (from self.startHoles to self.maxHoles or until self.stopAtSuccess success
@@ -332,10 +302,6 @@ class ExperimentRunner:
 
                     player = self.mExperiment.getPlayer(self.field, holes);
 
-                    # print class of Player on first iteration
-                    if (printData and holes==0 and repeats == 0):
-                        print ("class:", player.__class__);
-                    
                     if not new:
                         # we have seen this same layout from the player for a previous value of "holes",
                         # skip the remaining repeats for this value.
@@ -350,6 +316,7 @@ class ExperimentRunner:
                             if player.layoutError:
                                 print("layout algorithm error: probably too many holes for the field size");
                                 self.printDescription();
+                                exit(1);
                         
                         if result[0]:
                             # the player uncovered treasure
@@ -366,7 +333,7 @@ class ExperimentRunner:
                             # as the previous repeat. We assume all Players obey this.
                             print("ERROR: layout algorithm returned inconsistent number of holes dug");
                             exit();
-                        
+
                         # check if this layout is new on the first repeat
                         if repeats == 0:
                             if lastHole == holesDug:
@@ -379,7 +346,6 @@ class ExperimentRunner:
                         print("ERROR");
                         traceback.print_exc();
                         exit();
-
                 if new:
                     self.printResults(printData, outputFile, holes, holesDug, successes, numRepeats);
 
@@ -392,6 +358,8 @@ class ExperimentRunner:
                 else:
                     holes = holes + self.holeIncrement;
 
+
+## DEBUGGING FUNCTIONS
 
 # debugging function to examine how hexagonal the layout of holes on a Field is.
 # Prints the horizontal distance between the first two holes on the first row,
@@ -435,15 +403,15 @@ def calculateHoleDistances(field:Field, doPrint:bool = True) -> tuple[float, flo
 def testHexagonality() -> None:
     fieldFileName = "printedFields/hexliketest.hpf";
     field = Field(100, 100);
-    treasure = RectangularTreasure(20, 5, 0);
+    treasure = RectangularTreasure(20, 5, 0, False);
     field.placeTreasure(treasure);
-    player = HexagonalLikePlayer(field, 0.5, 12, True, False);
-    #player = HexagonalPlayer(field, 0.5, 12, False);
+    player = HexagonalLikePlayer(field, 0.5, 50, True, staggerY=False, TBBorder=True);
+    # player = HexagonalPlayer(field, 0.5, 40, False);
     #player = RandomPlayer(field, 1, 18, True);
     #player = HaltonPlayer(field, 2, 2, 50);
     result = player.play();
     print ("hit:", result[0], "numHoles:", result[1]);
-    field.print(fileName=fieldFileName);
+    # field.printField(fileName=fieldFileName);
     calculateHoleDistances(field);
 
 
@@ -453,13 +421,16 @@ def testBorders():
     field = Field(100, 100);
     treasure = RectangularTreasure(20, 5, 0);
     field.placeTreasure(treasure);
-    player = HexagonalLikePlayer(field, 0.5, 2000, True, True, False, 8);
-    #player = RandomPlayer(field, 0.5, 2000, True);
-    #player = HaltonPlayer(field, 0.5, 1000, True);
-    
+    player = HexagonalLikePlayer(field, 0.5, 8000, True, True, True, 8, TBBorder = True);
+    # player = HexagonalPlayer(field, 0.5, 2000, False);
+    # player = RandomPlayer(field, 0.5, 10000, False);
+    # player = HaltonPlayer(field, 0.5, 10000, np.random.default_rng(12345), False);
+
+
     # Note, returnAfterHit is False
     result = player.play(False);
-    #field.print("test field");
+    print("numholes", result[1]);
+    #field.printField("test field");
     testBordersOfField(field);
 
 # debugging function to find the borders on a field (in which no holes have been dug).

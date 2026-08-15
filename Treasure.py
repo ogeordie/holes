@@ -23,16 +23,19 @@
 from abc import ABC
 from abc import abstractmethod
 from Hole import Hole
+from HolesDictionary import HolesDictionary
 import random
 import math
-from shapely import Polygon
-from shapely.affinity import rotate
-import cv2
+from shapely import Polygon, intersects
+from shapely.affinity import rotate, translate
 import csv
 import traceback
 import shapefile
 from dataclasses import dataclass
+from pathlib import Path
+import re
 import sys
+import os
 
 
 # An abstract Treasure that sits on a Field. Treasure implementations should
@@ -40,8 +43,13 @@ import sys
 # indicated.
 class Treasure(ABC):
 
-    # Place the treasure on a Field of the given dimensions, so that
-    # the treasure lies wholly within the field.
+    # Place the treasure on a Field of the given dimensions. Some Treasure
+    # implementations lie wholly within the field. Others (including all those
+    # used in "Layout Matters") lie partially within the Field. In this case
+    # at least two thirds of at least two sides of the the treasure's bounding
+    # box lie within the field (the centre of the bounding box is then at least
+    # one sixth the length of the relevant bounding box side from the edge
+    # of the field).
     @abstractmethod
     def placeRandomly(self, fieldWidth:int, fieldHeight:int) -> None:
         pass;
@@ -62,9 +70,16 @@ class TreasureManager(ABC):
 
     # Return the treasure managed by this class. On first call, it will be a
     # new Treasure. On subsequent calls it may be the same Treasure if
-    # circumstances allow.
+    # circumstances allow. Certain implementations assume getTreasure()
+    # is called during each simulation iteration.
     @abstractmethod
     def getTreasure(self) -> Treasure:
+        pass;
+
+    # Return a string summarizing the treasure, used for creating filenames
+    # when printing a Field.
+    @abstractmethod
+    def getTreasureDescription(self) -> str:
         pass;
 
 
@@ -73,11 +88,15 @@ class RectangularTreasure(Treasure):
 
     # Create the RectangularTreasure with the given dimensions and rotation.
     # Rotation is counter-clockwise from horizontal.
-    def __init__(self, longSide:float, shortSide:float, rotation:float):
+    # If whollyWithinField, the treasure lies wholly within the field.
+    # Otherwise partially as specified in the Treasure.placeRandomly()
+    # comments.
+    def __init__(self, longSide:float, shortSide:float, rotation:float, whollyWithinField:bool = False):
         self._longSide = longSide;
         self._shortSide = shortSide;
         self._rotation = rotation;
         self._centreX = self._centreY = 0;
+        self._whollyWithinField = whollyWithinField;
         if round(self._longSide, 2) < round(self._shortSide, 2):
             print("incorrect treasure dimensions");
             exit(1);
@@ -88,8 +107,8 @@ class RectangularTreasure(Treasure):
 
 
     # Place this on a Field of given dimensions. Stores position
-    # in self._centreX and self._centreY. The treasure lies wholly
-    # within the field.
+    # in self._centreX and self._centreY, and the rectangle in
+    # self._polygon.
     def placeRandomly(self, fieldWidth, fieldHeight):
         # rotate counterclockwise, noting (0,0) is top left of field
         rotatedPolygon = rotate(self._initialPolygon, -1*self._rotation);
@@ -101,11 +120,19 @@ class RectangularTreasure(Treasure):
 
         if (maxX - minX > fieldWidth or maxY - minY > fieldHeight):
             print("field not big enough for treasure");
-            exit(1);        
+            exit(1);
+
         xRandom = random.random();
         yRandom = random.random();
-        self._centreX = xRandom * (fieldWidth - (maxX-minX)) + (maxX-minX)/2;
-        self._centreY = yRandom * (fieldHeight - (maxY-minY)) + (maxY-minY)/2;
+        boundingWidth = maxX - minX;
+        boundingHeight = maxY - minY;
+        if self._whollyWithinField:
+            self._centreX = xRandom * (fieldWidth - boundingWidth) + boundingWidth/2;
+            self._centreY = yRandom * (fieldHeight - boundingHeight) + boundingHeight/2;
+        else:
+            self._centreX = xRandom * (fieldWidth - (2/6) * boundingWidth) + (1/6) * boundingWidth;
+            self._centreY = yRandom * (fieldHeight - (2/6) * boundingHeight) + (1/6) * boundingHeight;
+
         shiftX = self._centreX - self._initialCentre[0];
         shiftY = self._centreY - self._initialCentre[1];
         shiftedVertices = [(v[0] + shiftX, v[1] + shiftY) for v in self._initialVertices];
@@ -117,31 +144,30 @@ class RectangularTreasure(Treasure):
         self._boundsMinY = min(self._yVertices);
         self._boundsMaxY = max(self._yVertices);
 
-    # Determine if this treasure intersects hole, using opencv rotatedRectangleIntersection()
-    # funtion. First check the rectangle's bounding box for efficiency.
+
+    # Determine if this treasure intersects hole.
+    # First check the rectangle's bounding box for efficiency.
     def intersectsHole(self, hole:Hole) -> bool:
         holeLeft = hole.centreX - hole.width/2;
         holeRight = hole.centreX + hole.width/2;
         holeBottom = hole.centreY + hole.height/2;
         holeTop = hole.centreY - hole.height/2;
 
-        boundingXOverlap = self._boundsMinX < holeRight and self._boundsMaxX > holeLeft;
-        boundingYOverlap = self._boundsMinY < holeBottom and self._boundsMaxY > holeTop;
-        cvIntersect = False;
+        boundingXOverlap = self._boundsMinX <= holeRight and self._boundsMaxX >= holeLeft;
+        boundingYOverlap = self._boundsMinY <= holeBottom and self._boundsMaxY >= holeTop;
 
         if self._rotation == 0 or self._rotation == 90:
             return boundingXOverlap and boundingYOverlap;
 
+        intersect = False;
         if boundingXOverlap and boundingYOverlap:
-            ret = 0;
             try:
-                ret, points = cv2.rotatedRectangleIntersection(((hole.centreX, hole.centreY), (hole.width, hole.height), 0), \
-                    ((self._centreX, self._centreY), (self._longSide, self._shortSide), -1*self._rotation));
+                holePolygon = Polygon([(holeLeft, holeTop), (holeRight, holeTop), (holeRight, holeBottom), (holeLeft, holeBottom)]);
+                intersect = self._polygon.intersects(holePolygon);
             except:
                 print("error finding intersection of hole and site. This is not serious unless it happens often");
-            cvIntersect = ret > 0;
         
-        return cvIntersect;
+        return intersect;
 
     # Print details of this treasure to outputFile, starting with the
     # line "rectangularTreasure:", followed by the bounding box on one line,
@@ -178,7 +204,7 @@ class RealWorldData:
             self.artefacts.append((x,y));
             self._numArtefacts += 1;
 
-        def print(self):
+        def printParcel(self):
             print(self._numArtefacts, "", end='');
 
     # csvFileName is the name of the file specifying the location of artefacts.
@@ -211,20 +237,16 @@ class RealWorldData:
         self.maxY = self.maxY - self.minY;
         self.minX = 0;
         self.minY = 0;
+        self.width = self.maxX;
+        self.height = self.maxY;
 
         # create a 2D array of DataParcels, see class documentation for explanation
-        self._artefacts = [[self.DataParcel() for y in range(math.ceil(self.maxY))] for x in range(math.ceil(self.maxX))];
+        self._artefacts = [[self.DataParcel() for y in range(math.ceil(self.height))] for x in range(math.ceil(self.width))];
 
         for i in range(len(self._normalisedArtefacts)):
             x = self._normalisedArtefacts[i][0];
             y = self._normalisedArtefacts[i][1];
             self._artefacts[math.floor(x)][math.floor(y)].addArtefact(x,y);
-
-    def print(self):
-        for i in range(len(self._artefacts)):
-            for j in range(len(self._artefacts[i])):
-                self._artefacts[i][j].print();
-            print();
     
     # place the real world site so that the top left corner is at the given coordinates.
     # This top left coordinate is used when determining if a hole uncovers an artefact.
@@ -275,17 +297,17 @@ class RealWorldData:
 
         # if the hole isn't within the minimum and maximum borders of the treasure site
         # return 0
-        if left > self.topLeftX + self.maxX or \
-            right < self.topLeftX + self.minX or \
-            top > self.topLeftY + self.maxY or \
-            bottom < self.topLeftY + self.minY:
+        if left > self.topLeftX + self.width or \
+            right < self.topLeftX or \
+            top > self.topLeftY + self.height or \
+            bottom < self.topLeftY:
             return 0;
 
         # determine in which data parcels we should look for artefacts
         startX = math.floor(max(left, self.topLeftX) - self.topLeftX);
-        endX = math.floor(min(right, self.topLeftX + self.maxX) - self.topLeftX); 
+        endX = math.floor(min(right, self.topLeftX + self.width) - self.topLeftX); 
         startY = math.floor(max(top, self.topLeftY) - self.topLeftY);
-        endY = math.floor(min(bottom, self.topLeftY + self.maxY) - self.topLeftY); #inclusive
+        endY = math.floor(min(bottom, self.topLeftY + self.height) - self.topLeftY); #inclusive
 
         # for each data parcel of interest, examine its list of artefacts and check if it
         # is within the hole
@@ -297,8 +319,6 @@ class RealWorldData:
                     for i in range(len(parcel.artefacts)):
                         artefactX = self.topLeftX + parcel.artefacts[i][0];
                         artefactY = self.topLeftY + parcel.artefacts[i][1];
-                        # Use <= and >= as artefacts are described by points.
-                        # In reality they would have some width and height.
                         if left <= artefactX and \
                             right >= artefactX and \
                             top <= artefactY and \
@@ -306,7 +326,8 @@ class RealWorldData:
                             artefactCount += 1;
             # if testing against raw data (see above in this method), uncomment:
             # if (artefactCount != normalisedArtefactCount):
-            #     print("** error");
+            #     print("** artefact count error");
+
             return artefactCount;
         except:
             print("error:", x, "artefact max:", len(self._artefacts));
@@ -314,7 +335,7 @@ class RealWorldData:
             exit();
     
     # print out the artefacts in all data parcels to the given file
-    def print(self, file):
+    def printData(self, file):
         for i in range(len(self._artefacts)):
             for j in range(len(self._artefacts[i])):
                 for k in range(len(self._artefacts[i][j].artefacts)):
@@ -338,7 +359,7 @@ class RealWorldTreasure(Treasure):
     # the field.
     def placeRandomly(self, fieldWidth:int, fieldHeight:int) -> None:
         # check the treasure will fit
-        if self._data.maxX > fieldWidth or self._data.maxY > fieldHeight:
+        if self._data.width > fieldWidth or self._data.height > fieldHeight:
             print("treasure doesn't fit on the field");
             exit();
 
@@ -349,8 +370,8 @@ class RealWorldTreasure(Treasure):
         if self._data.minX != 0 or self._data.minY != 0:
             print("error, min value not 0 in real world treasure");
 
-        topLeftX = xRandom * (fieldWidth - self._data.maxX);
-        topLeftY = yRandom * (fieldHeight - self._data.maxY);
+        topLeftX = xRandom * (fieldWidth - self._data.width);
+        topLeftY = yRandom * (fieldHeight - self._data.height);
         
         self._data.placeTopLeft(topLeftX, topLeftY);
         self._treasurePlaced = True;
@@ -367,9 +388,9 @@ class RealWorldTreasure(Treasure):
     # The a line for the bounding box, followed by one line for each artefact.
     def printTreasure(self, outputFile) -> None:
         print("realworldTreasure:", file=outputFile);
-        print(self._data.minX + self._data.topLeftX, self._data.minY + self._data.topLeftY, \
-            self._data.maxX + self._data.topLeftX, self._data.maxY + self._data.topLeftY, file=outputFile);
-        self._data.print(outputFile);
+        print(self._data.topLeftX, self._data.topLeftY, \
+            self._data.width + self._data.topLeftX, self._data.height + self._data.topLeftY, file=outputFile);
+        self._data.printData(outputFile);
 
     # return the RealWorldData object which defines the treasure. This is useful so
     # it can be re-used to avoid repeatedly reading data from the file
@@ -386,8 +407,8 @@ class PolygonTreasure(Treasure):
     # Read the given shapfile files and create the polygon normalised
     # to (0,0). The shapefile is assumed to define a polygon that is
     # vertically oriented.
-    def __init__(self, fileName:str, rotation:float=0):
-        sf = shapefile.Reader("real world data/" + fileName);
+    def __init__(self, fileName:str, rotation:float=0, whollyWithinField:bool = False):
+        sf = shapefile.Reader(HolesDictionary.getCaseStudiesDataDirectoryName() + "/" + fileName);
         shapes = sf.shapes();
         polygon = shapes[0];
         polygonPoints = [];
@@ -395,39 +416,49 @@ class PolygonTreasure(Treasure):
             polygonPoints.append(p);
         self._mPoints = polygonPoints;
         self._rotation = rotation;
+        self._whollyWithinField = whollyWithinField;
 
         # calculate bounding box
-        minX = -1;
-        minY = -1;
-        maxX = -1;
-        maxY = -1;
+        minX = sys.maxsize;
+        minY = sys.maxsize;
+        maxX = -1*sys.maxsize;
+        maxY = -1*sys.maxsize;
         horizontalPoints = [];
         for i in range(len(self._mPoints)):
             point = self._mPoints[i];
-            if point[0] < minX or minX == -1:
+            # if point[0] < minX or minX == -1:
+            #     minX = point[0];
+            # if point[1] < minY or minY == -1:
+            #     minY = point[1];
+            # if point[0] > maxX:
+            #     maxX = point[0];
+            # if point[1] > maxY:
+            #     maxY = point[1]
+            horizontalPoints.append((-1*point[1], point[0]));
+        
+        for j in range(len(horizontalPoints)):
+            point = horizontalPoints[j];
+            if point[0] < minX:
                 minX = point[0];
-            if point[1] < minY or minY == -1:
+            if point[1] < minY:
                 minY = point[1];
             if point[0] > maxX:
                 maxX = point[0];
             if point[1] > maxY:
                 maxY = point[1]
-            horizontalPoints.append((point[1], point[0]));
             
         # normalize points to have 0 minimum x and y coordinates
         self._normalisedPoints = [];
         for p in horizontalPoints:
-            # p[0] was y value when minY was calculated in points and p[1]
-            # the x value when minX was calculated - switched in horizontalPoints
-            self._normalisedPoints.append((p[0] - minY, p[1] - minX));
+            self._normalisedPoints.append((p[0] - minX, p[1] - minY));
 
         self._originalPolygon = Polygon(self._normalisedPoints);
         self._originalBounds = self._originalPolygon.bounds;
         self._originalCentre = ((self._originalBounds[0] + self._originalBounds[2]) / 2, (self._originalBounds[1] + self._originalBounds[3]) / 2);
 
     # Place the treasure on a Field of the given dimensions in a random position.
-    # Rotate the polygon and set the bounding box. The treasure lies wholly
-    # within the field.
+    # Rotate the polygon and set the bounding box. The treasure lies partially
+    # within the field as described in Treasure.placeRandomly() comments.
     def placeRandomly(self, fieldWidth:int, fieldHeight:int) -> None:
         q = rotate(self._originalPolygon, -1*self._rotation);
         qBounds = q.bounds;
@@ -438,18 +469,23 @@ class PolygonTreasure(Treasure):
             exit(1);
         randomX = random.random();
         randomY = random.random();
-        centreX = (randomX * (fieldWidth - boundWidth)) + boundWidth / 2;
-        centreY = (randomY * (fieldHeight - boundHeight)) + boundHeight / 2;
-        shiftX = centreX - self._originalCentre[0];
-        shiftY = centreY - self._originalCentre[1];
-        shiftedPoints = [(v[0] + shiftX, v[1] + shiftY) for v in self._normalisedPoints];
-        shiftedPolygon = Polygon(shiftedPoints);
-        self._polygon = rotate(shiftedPolygon, -1*self._rotation);
+        if self._whollyWithinField:
+            centreX = (randomX * (fieldWidth - boundWidth)) + boundWidth / 2;
+            centreY = (randomY * (fieldHeight - boundHeight)) + boundHeight / 2;
+        else:
+            centreX = randomX * (fieldWidth - (2/6) * boundWidth) + (1/6) * boundWidth;
+            centreY = randomY * (fieldHeight - (2/6) * boundHeight) + (1/6) * boundHeight;
+
+        shiftX = centreX - (qBounds[2] + qBounds[0])/2;
+        shiftY = centreY - (qBounds[3] + qBounds[1])/2;
+        shiftedPolygon = translate(q, xoff=shiftX, yoff=shiftY);
+        self._polygon = shiftedPolygon;
         self._bounds = self._polygon.bounds;
         self._minBoundingX = self._bounds[0];
         self._minBoundingY = self._bounds[1];
         self._maxBoundingX = self._bounds[2];
         self._maxBoundingY = self._bounds[3];
+
 
     # Returns True iff hole intersects this polygon.
     def intersectsHole(self, hole:Hole) -> bool:
@@ -516,7 +552,7 @@ class CircularTreasure(Treasure):
 
         distanceToClosestPoint = math.sqrt((self._centreX - closestXToCircleClamp)**2 + (self._centreY - closestYToCircleClamp) **2);
     
-        return distanceToClosestPoint < self._radius;
+        return distanceToClosestPoint <= self._radius;
 
     # Print this treasure to outputFile, starting with the line "circularTreasure:"
     # then a line specifying the centre and radius.
@@ -528,16 +564,20 @@ class CircularTreasure(Treasure):
 # A manager of a RectangularTreasure
 class RectangularTreasureManager(TreasureManager):
     # The rectangular treasure will have these parameters
-    def __init__(self, longSide:float, shortSide:float, rotation:float):
+    def __init__(self, longSide:float, shortSide:float, rotation:float, whollyWithinField:bool = False):
         self._longSide = longSide;
         self._shortSide = shortSide;
         self._rotation = rotation;
         self._treasure = None;
-    
+        self._whollyWithinField = whollyWithinField;
+
     def getTreasure(self) -> Treasure:
         if self._treasure == None:
-            self._treasure = RectangularTreasure(self._longSide, self._shortSide, self._rotation);
+            self._treasure = RectangularTreasure(self._longSide, self._shortSide, self._rotation, self._whollyWithinField);
         return self._treasure;
+
+    def getTreasureDescription(self) -> str:
+        return "rectangle " + str(round(self.getLongSide(), 2)) + "x" + str(round(self.getShortSide(), 2)) + " orientation " + str(self.getRotation());
 
     # Return the length of the long side of the treasure
     def getLongSide(self) -> float:
@@ -564,6 +604,9 @@ class CircularTreasureManager(TreasureManager):
             self._treasure = CircularTreasure(self._radius);
         return self._treasure;
 
+    def getTreasureDescription(self) -> str:
+        return "circular " + str(self.getRadius());
+
     # Return the radius of the treasure
     def getRadius(self) -> float:
         return self._radius;
@@ -580,8 +623,12 @@ class PolygonTreasureManager(TreasureManager):
 
     def getTreasure(self) -> Treasure:
         if self._treasure == None:
-            self._treasure = PolygonTreasure(self._shapeFileName, self._rotation);
+            self._treasure = PolygonTreasure(self._shapeFileName, self._rotation, False);
         return self._treasure;
+
+    def getTreasureDescription(self) -> str:
+        caseStudy = self.getShapeFileName().removesuffix(".zip");
+        return "casestudy " + caseStudy + " orientation " + str(self.getRotation());
 
     # Get the name of the ShapeFile file defining the polygon
     def getShapeFileName(self) -> str:
@@ -605,6 +652,12 @@ class RealWorldTreasureManager(TreasureManager):
             self._treasure = RealWorldTreasure(self._artefactFileName);
         return self._treasure;
 
+    def getTreasureDescription(self) -> str:
+        fileName = self.getArtefactFileName();
+        p = Path(fileName);
+        firstWord = re.split(r'\.| ', p.name)[0];
+        return "realworld " + firstWord;
+
     # Return the file name of the file defining the artefacts.
     def getArtefactFileName(self) -> str:
         return self._artefactFileName;
@@ -612,19 +665,30 @@ class RealWorldTreasureManager(TreasureManager):
 
 # A manager that returns a new RectangularTreasure with random site area,
 # length (from the length of a 1:1 rectangle to that of a 40:1 rectangle given
-# the site area), and orientation
+# the site area), and orientation. In experiments with randomised treasure specs,
+# getTreasure() should be called in each iteration of the simulation.
 class RandomisedTreasureManager(TreasureManager):
-    def __init__(self):
+    def __init__(self, randomiseRatio:bool):
         self._treasure = None;
+        self._randomiseRatio = randomiseRatio;
 
     def getTreasure(self) -> Treasure:
         rotation = random.random() * 180;
 
         siteArea = random.uniform(1, 200);
 
-        maxLongestSide = math.sqrt(siteArea * 40);
-        minLongestSide = math.sqrt(siteArea);
-        longSide = random.uniform(minLongestSide, maxLongestSide);
-        shortSide = siteArea / longSide;
+        if self._randomiseRatio:
+            ratio = random.uniform(1, 40);
+            longSide = math.sqrt(ratio * siteArea);
+            shortSide = siteArea / longSide;
+        else:
+            # randomise length
+            maxLongestSide = math.sqrt(siteArea * 40);
+            minLongestSide = math.sqrt(siteArea);
+            longSide = random.uniform(minLongestSide, maxLongestSide);
+            shortSide = siteArea / longSide;
 
-        return RectangularTreasure(longSide, shortSide, rotation);
+        return RectangularTreasure(longSide, shortSide, rotation, False);
+
+    def getTreasureDescription(self) -> str:
+        return "randomtreasure";

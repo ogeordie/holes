@@ -31,6 +31,7 @@ from Hole import Hole
 import random
 import math
 import numpy as np
+from numpy.random import Generator
 from scipy.stats import qmc
 
 
@@ -67,7 +68,8 @@ class StaggeredPlayer(Player):
     # The top left of the field is considered to be 0,0.
     #
     # xHoles and yHoles are numbers of holes in the x and y directions respectively.
-    # borderX and borderY are the left and top borders respectively where no holes are placed.
+    # borderX and borderY are the left and top borders respectively where no holes are placed
+    # (these should be at least holeSize/2 as the centre of a hole may fall on a border).
     # dX and dY are the distances between holes in the x and y directions respectively.
     # staggerY is True if the layout should be staggered in the y direction as well as the x.
     # If randomise is true, each hole is shifted in both x and y directions by a random 
@@ -81,19 +83,20 @@ class StaggeredPlayer(Player):
     # holes returned will be as if this were False.
     def doStaggeredLayout(self, field:Field, holeSize:float, xHoles:int, borderX:float, dX:float, yHoles:int, borderY:float, dY:float, staggerY:bool, randomise:bool = False, stdDevDivisor = 1, returnAfterHit:bool = True) -> tuple[bool, int]:
         # check the parameters fit properly on the field
-        totalX = (2 * borderX) + ((xHoles - 0.5) * dX);
-        totalY = (2 * borderY) + ((yHoles - 1) * dY);
-        if staggerY:
-            totalY = (2 * borderY) + ((yHoles - 0.5) * dY);
-        if round(totalX, 2) != round(field.width, 2):
-            print("error: staggered layout does not fit the field width");
-            print(self.__class__.__name__, xHoles, yHoles, borderX, borderY, dX, dY, staggerY);
-            exit();
-        if round(totalY, 2) != round(field.height, 2):
-            print("error: staggered layout does not fit the field height");
-            print(self.__class__.__name__, xHoles, yHoles, borderX, borderY, dX, dY, staggerY);
-            exit();
-
+        if xHoles > 1 and yHoles > 1:
+            totalX = (2 * borderX) + ((xHoles - 0.5) * dX);
+            totalY = (2 * borderY) + ((yHoles - 1) * dY);
+            if staggerY:
+                totalY = (2 * borderY) + ((yHoles - 0.5) * dY);
+            if round(totalX, 2) != round(field.width, 2):
+                print("error: staggered layout does not fit the field width");
+                print(self.__class__.__name__, xHoles, yHoles, borderX, borderY, dX, dY, staggerY);
+                exit();
+            if round(totalY, 2) != round(field.height, 2):
+                print("error: staggered layout does not fit the field height");
+                print(self.__class__.__name__, xHoles, yHoles, borderX, borderY, dX, dY, staggerY);
+                exit();
+        
         # do the layout
         row = 0;
         holesMade = 0;
@@ -115,7 +118,7 @@ class StaggeredPlayer(Player):
                         pos_y = borderY + dY * y;
                     else:
                         pos_y = borderY + (dY / 2) + dY * y;
-                
+
                 if randomise:
                     startX = pos_x - dX/2
                     endX = pos_x + dX/2
@@ -171,20 +174,23 @@ class StaggeredPlayer(Player):
 
 # a Player that uses a scrambled 2-D halton distribution of holes.
 # We use the SciPy implementation of the scrambled halton distribution.
+# Note that if border is True, both horizontal and vertical borders will
+# be enforced.
 class HaltonPlayer(Player):
 
     # create the player with the given values
     # seed is the value to use with the NumPy random number generator.
-    def __init__(self, field:Field, holeSize:float, numHoles:int, seed:int, border:bool=False):
+    def __init__(self, field:Field, holeSize:float, numHoles:int, rng:Generator, border:bool=False):
         self._field = field;
         self._holeSize = holeSize;
         self._numHoles = numHoles;
-        self._seed = seed;
+        self._rng = rng;
         if border and (self._field.width != self._field.height):
             print("non square field not supported");
             exit();
         if (border and self._numHoles != 0):
-            self._border = (self._field.width / math.sqrt(self._numHoles)) / 2;
+            p =4;
+            self._border = self._field.width / (p * (2/p + math.sqrt(numHoles) - 1));
         else:
             self._border = self._holeSize / 2;
 
@@ -193,8 +199,7 @@ class HaltonPlayer(Player):
     # determined by the layout algorithm (which will be equal to the
     # number of holes supplied to the constructor for this layout).
     def play(self, returnAfterHit:bool = True) -> tuple[bool, int]:
-        numPyRNG = np.random.default_rng(self._seed);
-        sampler = qmc.Halton(d=2, scramble=True, rng = numPyRNG);
+        sampler = qmc.Halton(d=2, scramble=True, rng = self._rng);
         sample = sampler.random(n=self._numHoles);
         points = sample;
         found = False;
@@ -230,12 +235,19 @@ class HaltonPlayer(Player):
 # of this staggering the layout can no longer be called hexagonal.
 #
 # If LRBorder (left and right border) is True, each even row
-# has a left border of a/2 (and so the left border for each odd row is a
-# as it is staggered). The right borders will be a for non-staggered rows
-# and a/2 for staggered rows.
-# If the distance between rows is c, the top and bottom borders are c/2.
+# has a left border of a/4 (and so the left border for each odd row is 3*a/4
+# as it is staggered). The right borders will be 3*a/4 for non-staggered rows
+# and a/4 for staggered rows.
+# If the distance between rows is c, the top and bottom borders are c/4 if
+# TBBorder is True.
+# If LRBorder or TBBorder is False, that border will be holeSize/2 as the
+# centre of the hole may fall on a border.
+# If the border is less than holeSize/2 the algorithm fails (self.layoutError is
+# set to True). This could be modified to set the borders to this minimum value and
+# recalculate the numbers of holes to use with "no" border (actually holeSize/2).
 # If staggerY is True, each second hole in each row is shifted down by c/2,
-# and the closest holes to the top and bottom will be c/2 from the field edge.
+# and the closest holes to the top and bottom will be c/4 from the field edge
+# (if TBBorder is True).
 # If randomise is True, hole positions are shifted in both x and y directions
 # by a random amount according to a normal distribution, with the original
 # position as mean, and standard deviation of dX/stdDevDivisor and dY/stdDevDivisor
@@ -244,12 +256,13 @@ class HaltonPlayer(Player):
 class HexagonalLikePlayer(StaggeredPlayer):
 
     # create the player with the given values (see class comments)
-    def __init__(self, field:Field, holeSize:float, numHoles:int, LRBorder:bool = True, staggerY:bool = False, randomise:bool = False, stdDevDivisor = 1):
+    def __init__(self, field:Field, holeSize:float, numHoles:int, LRBorder:bool = True, staggerY:bool = False, randomise:bool = False, stdDevDivisor = 1, TBBorder:bool = True):
         # these are not private as subclasses may want them
         self.field = field;
         self.holeSize = holeSize;
         self.numHoles = numHoles;
         self.LRBorder = LRBorder;
+        self.TBBorder = TBBorder;
         self.staggerY = staggerY;
         self.randomise = randomise;
         self.stdDevDivisor = stdDevDivisor;
@@ -275,47 +288,80 @@ class HexagonalLikePlayer(StaggeredPlayer):
     # On return self.layoutError is True if the algorithm was unable to
     # fit the number of holes on the field, otherwise False.
     def play(self, returnAfterHit:bool = True) -> tuple[bool, int]:
-        if (self.LRBorder):
+        self.layoutError = False;
+        p = 4;
+        if (self.LRBorder and self.TBBorder):
             # calculate number of holes in a row according to the hexagonal-like formula
-            numHoles_x = self.quadratic(2 * self.field.height, self.field.height, -1 * math.sqrt(3) * self.numHoles * self.field.width);
+            numHoles_x = self.quadratic(\
+                2 * self.field.height,
+                4 * self.field.height / p - self.field.height + math.sqrt(3) * self.field.width - 2 * math.sqrt(3) * self.field.width / p,\
+                -1 * math.sqrt(3) * self.field.width * self.numHoles);
             if self.staggerY:
-                numHoles_x = self.quadratic(
-                    4 * self.field.height, 2 * self.field.height - math.sqrt(3) * self.field.width, \
-                    -2 * math.sqrt(3) * self.numHoles * self.field.width);
-        else:
+                numHoles_x = self.quadratic(\
+                    2 * self.field.height,\
+                    4 * self.field.height / p - self.field.height + math.sqrt(3) * self.field.width / 2 - 2 * math.sqrt(3) * self.field.width / p,\
+                    -1 * math.sqrt(3) * self.field.width * self.numHoles);
+        elif (not self.LRBorder and not self.TBBorder):
+            numHoles_x = self.quadratic( \
+                2 * self.field.height - 4 * self.holeSize/2,\
+                math.sqrt(3) * self.field.width - 2 * math.sqrt(3) * self.holeSize/2 - self.field.height + self.holeSize,\
+                math.sqrt(3) * (self.holeSize * self.numHoles - self.field.width * self.numHoles));
+                # 2 * self.field.height, math.sqrt(3) * self.field.width - self.field.height, -1 * math.sqrt(3) * self.numHoles * self.field.width)
             if self.staggerY:
-                print("stagger Y with no horizontal border not supported");
+                numHoles_x = self.quadratic( \
+                    2 * self.field.height - 4 * self.holeSize/2,\
+                    self.holeSize - self.field.height + math.sqrt(3) * self.field.width / 2 - math.sqrt(3) * self.holeSize/2,
+                    math.sqrt(3) * self.numHoles * (self.holeSize - self.field.width));
+        elif (not self.LRBorder and self.TBBorder):
+            if self.staggerY:
+                print("stagger Y with no horizontal border and a vertical border not supported");
                 exit();
-            numHoles_x = self.quadratic(2 * self.field.height, -1 * self.field.height, -1 * math.sqrt(3) * self.numHoles * self.field.width);
+            
+            numHoles_x = self.quadratic(2 * self.field.height * p,\
+                math.sqrt(3) * self.field.width * p + 4 * math.sqrt(3) * (self.holeSize/2) - self.field.height * p - 2 * math.sqrt(3) * self.field.width - 2 * math.sqrt(3) * (self.holeSize/2) * p,\
+                -1 * math.sqrt(3) * self.numHoles * (self.field.width - self.holeSize) * p)
+        else:
+            print("unsupported configuration in HexagonalLikePlayer");
+            exit(1);
         
+        if numHoles_x == 0:
+            print("cannot place 0 holes");
+            exit(1);
         # calculate number of rows
         numHoles_y = self.numHoles / numHoles_x;
 
         # turn our floats into integers
         actualNumHoles = self._reviseNumHoles(self.numHoles, numHoles_x, numHoles_y);
-        
+
         # d_x is the distance between holes in the same row
         if (self.LRBorder):
-            self.d_x = self.field.width / (actualNumHoles[0] + 0.5);
+            self.d_x = self.field.width / (2/p + actualNumHoles[0] - 0.5);
+            border_x = self.d_x / p;
         else:
             self.d_x = (self.field.width - self.holeSize) / (actualNumHoles[0] - 0.5);
-        
-        # d_y is the distance between rows
-        if self.staggerY:
-            self.d_y = self.field.height / (actualNumHoles[1] + 0.5);
-        else:
-            self.d_y = self.field.height / actualNumHoles[1];
-
-        # the sizes of the horizontal and vertical borders
-        if self.LRBorder:
-            border_x = self.d_x / 2;
-        else:
             border_x = self.holeSize / 2;
-        border_y = self.d_y / 2;
+        
+        if (self.TBBorder):
+            if self.staggerY:
+                self.d_y = self.field.height / (2/p + actualNumHoles[1] - 0.5);
+            else:
+                self.d_y  = self.field.height / (2/p + actualNumHoles[1] - 1);
+            border_y = self.d_y / p;
+        else:
+            # no top and bottom border
+            if self.staggerY:
+                self.d_y = (self.field.height - self.holeSize) / (actualNumHoles[1] - 0.5);
+            else:
+                if actualNumHoles[1] == 1:
+                    self.d_y = (self.field.height - self.holeSize);
+                else:
+                    self.d_y = (self.field.height - self.holeSize) / (actualNumHoles[1] - 1);
+            border_y = self.holeSize / 2;
 
         # check that the holes fit on the field
-        self.layoutError = False;
         if border_x < self.holeSize/2 or border_y < self.holeSize/2 or self.d_x < self.holeSize or self.d_y < self.holeSize:
+            # TODO: when the borders are too small, set to holeSize/2 and recalculate numbers of holes with no borders
+            # using the equation near the top of this method.
             self.layoutError = True;
 
         return self.doStaggeredLayout(self.field, self.holeSize, actualNumHoles[0], border_x, self.d_x, actualNumHoles[1], border_y, self.d_y, self.staggerY, self.randomise, self.stdDevDivisor, returnAfterHit = returnAfterHit);
@@ -326,6 +372,9 @@ class HexagonalLikePlayer(StaggeredPlayer):
 # This may not be the best way to implement a hexagonal layout.
 # This player staggers holes horizontally - if the distance between holes
 # in the same row is a, each even row is shifted right by a/2.
+# Note that due to the adjustment of borders, it is based on a
+# hexagonal-like layout with a/4 and c/4 horizontal and vertical
+# borders respectively.
 class HexagonalPlayer(HexagonalLikePlayer):
 
     # Use the given values. Note staggerY = True is not currently supported for this player.
@@ -342,17 +391,24 @@ class HexagonalPlayer(HexagonalLikePlayer):
     # fit the number of holes on the field, otherwise False.
     def play(self, returnAfterHit:bool = True) -> tuple[bool, int]:
         # calculate number of holes in a row according to the hexagonal-like formula
-        numHoles_x = self.quadratic(2 * self.field.height, self.field.height, -1 * math.sqrt(3) * self.numHoles * self.field.width);
+        p = 4;
+        numHoles_x = self.quadratic(\
+                2 * self.field.height,
+                4 * self.field.height / p - self.field.height + math.sqrt(3) * self.field.width - 2 * math.sqrt(3) * self.field.width / p,\
+                -1 * math.sqrt(3) * self.field.width * self.numHoles);
 
         if self.staggerY:
             print("staggering in the Y direction not supported for HexagonalPlayer");
             exit();
-            # this formula hasn't been checked:
+            # this formula for p = 2 hasn't been tested:
             # numHoles_x = self.quadratic(
             #     4 * self.field.height, 2 * self.field.height - math.sqrt(3) * self.field.width, \
             #     -2 * math.sqrt(3) * self.numHoles * self.field.width);
         
         # calculate number of rows
+        if numHoles_x == 0:
+            print("cannot place 0 holes");
+            exit(1);
         numHoles_y = self.numHoles / numHoles_x;
 
         actualNumHoles = [round(numHoles_x), round(numHoles_y)];
@@ -360,12 +416,12 @@ class HexagonalPlayer(HexagonalLikePlayer):
         # fix the vertical border and c to their original values and adjust the horizontal border
         # and a to create a hexagonal layout
         if self.staggerY:
-            c = self.field.height / (actualNumHoles[1] + 0.5)
+            pass;
         else:
-            c = self.field.height / actualNumHoles[1];
+            c  = self.field.height / (2/p + actualNumHoles[1] - 1);
         a = 2 * c / math.sqrt(3);
         border_x = (self.field.width - a * ((actualNumHoles[0]) - 0.5)) / 2;
-        border_y = c/2;
+        border_y = c/p;
 
         self.layoutError = False;
 
@@ -377,11 +433,11 @@ class HexagonalPlayer(HexagonalLikePlayer):
             unexpected = True;
         if border_x < self.holeSize / 2:
             self.adjust = True;
-            a = (self.field.width - self.holeSize) / (actualNumHoles[0] - 0.5)
-            c = (math.sqrt(3) * a) / 2
+            a = (self.field.width - self.holeSize) / (actualNumHoles[0] - 0.5);
+            c = (math.sqrt(3) * a) / 2;
             border_x = self.holeSize / 2;
             if self.staggerY:
-                border_y = (self.field.height - c * (actualNumHoles[1] - 0.5)) / 2
+                pass;
             else:
                 border_y = (self.field.height - c * (actualNumHoles[1] - 1)) / 2
         
@@ -422,7 +478,8 @@ class RandomPlayer(Player):
             print("non square fields not supported");
             exit();
         if border and numHoles != 0:
-            self._border = (self._field.width / math.sqrt(numHoles)) / 2 ;
+            p = 4;
+            self._border = self._field.width / (p * (2/p + math.sqrt(numHoles) - 1));
         else:
             self._border = self._holeSize / 2;
 
@@ -450,13 +507,13 @@ class RandomPlayer(Player):
 
                     oldHole = Hole(h[0], h[1], self._holeSize, self._holeSize);
                     if oldHole.intersects(newHole):
+                        # used for debugging the bucket system
+                        # check = self._field.intersectsExistingHole(newHole);
+                        # if not(check):
+                        #     print("**error")
                         return True;
-
-                    # used for debugging the bucket system
-                    #    check = self._field.intersectsExistingHole(newHole);
-                    #    if not(check):
-                    #        print("**error")
     
+        # used for debugging the bucket system
         # check = self._field.intersectsExistingHole(newHole);
         # if check:
         #     print("**error")

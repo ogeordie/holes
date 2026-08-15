@@ -22,6 +22,7 @@
 #    - a method returning text for treasure orientations given the rotation value,
 #    - methods returning the names of subdirectories of the data and graphs directory to use
 #      for various experimental data, graphs, and tables.
+#    - a dictionary of colours to use when plotting graphs for the various algorithms
 
 
 class HolesDictionary:
@@ -53,6 +54,13 @@ class HolesDictionary:
         else:
             return str(result);
 
+
+    # Return the abbreviations of layout algorithms used for example in data file names
+    @staticmethod
+    def getLayoutAlgorithms() -> list:
+        return ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton", "random"];
+
+
     # Return text for a treasure's orientation based on the numerical orientation
     @staticmethod
     def orientationLabel(orientation:float) -> str:
@@ -61,6 +69,10 @@ class HolesDictionary:
         if orientation == 90:
             return "Vertical";
         return (str(orientation) + " Degree");
+
+
+    # FUNCTIONS TO RETURN SUBDIRECTORIES OF THE data AND graphs DIRECTORIES IN WHICH
+    # TO STORE DATA AND GRAPHS FOR THE VARIOUS EXPERIMENTS
 
     @staticmethod
     def getSuccessDirectoryName() -> str:
@@ -92,9 +104,40 @@ class HolesDictionary:
 
     @staticmethod
     def getSizeMattersDirectoryName() -> str:
-        return "sizematters"
+        return "sizematters";
 
     @staticmethod
     def getRandomisedTreasureDirectoryName() -> str:
-        return "randomtreasure"
+        return "randomtreasure";
+
+    @staticmethod
+    def getSupplementaryDirectoryName() -> str:
+        return "supplementary";
+
+    # This is the directory containing csv files with data on artefact distribution
+    # used in the real world experiments in "Size Matters"
+    @staticmethod
+    def getRealWorldDataDirectoryName() -> str:
+        return "real world site specifications";
+
+    # This is the directory containing the polygons specified in shapefile format
+    # (zip files) used in the case studies (polygon) experiments in "Layout Matters"
+    @staticmethod
+    def getCaseStudiesDataDirectoryName() -> str:
+        return "case studies site specifications"
     
+    # Return the colour to use when plotting graphs for the various algorithms
+    @staticmethod
+    def getColour(layoutAlgorithm:str) -> str:
+        dict = {
+            "hexlike" : "blue",
+            "staggerXY" : "orange",
+            "randomisedStaggerXY sd8" : "saddlebrown",
+            "randomisedStaggerXY8" : "saddlebrown",
+            "randomisedStaggerXY" : "saddlebrown",
+            "halton" : "red",
+            "random" : "fuchsia",
+            "hex" : "black"
+        }
+        result = dict[layoutAlgorithm];
+        return str(result);
