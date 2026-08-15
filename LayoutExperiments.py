@@ -1220,7 +1220,7 @@ def goSupplementalSummaryGraphs() -> None:
                 generateSummaryGraph(fieldSize, siteArea, generateShortSides(siteArea, 40, 0.1, 0.15), rotation, maximumHoles=maximumHoles, minFieldName="random", zoomCentral=True, showGraph=False, minY = minY, maxY = maxY, supplemental=True);
 
     fieldSize = 100;
-    maximumHoles = 6250;
+    maximumHoles = 8250;
     for siteArea in [20, 200]:
         for rotation in [0, 30, 60, 90]:
             minY = None;

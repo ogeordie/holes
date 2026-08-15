@@ -291,7 +291,9 @@ class HexagonalLikePlayer(StaggeredPlayer):
         self.layoutError = False;
         p = 4;
         if (self.LRBorder and self.TBBorder):
-            # calculate number of holes in a row according to the hexagonal-like formula
+            # calculate number of holes in a row according to the hexagonal-like formula.
+            # Horizontal borders are a/p and vertical c/p, where a is the distance between
+            # pits in a row, and c the distance between rows.
             numHoles_x = self.quadratic(\
                 2 * self.field.height,
                 4 * self.field.height / p - self.field.height + math.sqrt(3) * self.field.width - 2 * math.sqrt(3) * self.field.width / p,\
@@ -302,6 +304,7 @@ class HexagonalLikePlayer(StaggeredPlayer):
                     4 * self.field.height / p - self.field.height + math.sqrt(3) * self.field.width / 2 - 2 * math.sqrt(3) * self.field.width / p,\
                     -1 * math.sqrt(3) * self.field.width * self.numHoles);
         elif (not self.LRBorder and not self.TBBorder):
+            # all borders are holeSize/2
             numHoles_x = self.quadratic( \
                 2 * self.field.height - 4 * self.holeSize/2,\
                 math.sqrt(3) * self.field.width - 2 * math.sqrt(3) * self.holeSize/2 - self.field.height + self.holeSize,\
@@ -313,6 +316,8 @@ class HexagonalLikePlayer(StaggeredPlayer):
                     self.holeSize - self.field.height + math.sqrt(3) * self.field.width / 2 - math.sqrt(3) * self.holeSize/2,
                     math.sqrt(3) * self.numHoles * (self.holeSize - self.field.width));
         elif (not self.LRBorder and self.TBBorder):
+            # horizontal borders are holeSize/2, vertical are c/p, where c is the distance
+            # between rows
             if self.staggerY:
                 print("stagger Y with no horizontal border and a vertical border not supported");
                 exit();
