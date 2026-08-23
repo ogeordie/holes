@@ -30,7 +30,8 @@ class Hole:
     width:float
     height:float
 
-    # Returns True if this hole intersects anotherHole, otherwise False
+    # Returns True if this hole intersects anotherHole, otherwise False.
+    # Note that the top left of the Field is the origin (0,0).
     def intersects(self, anotherHole) -> bool:
         h1Top = self.centreY - self.height /2;
         h1Left = self.centreX - self.width  / 2;

@@ -44,10 +44,14 @@ class Field:
         self.adjustedHoleAtBorder = False;
         self._treasure = None;
 
-    # Place treasure on the field at a random location.
-    # The treasure lies so that at least two thirds of at least two sides of its
-    # bounding box are within the field (so the bounding box centre is at least 
-    # one sixth the lengths of the relevant sides of the bounding box from the field edge)
+    # Place treasure on the field at a random location. For "Layout Matters" experiments,
+    # the treasure lies so that at least two thirds of at least two sides of its
+    # bounding box lie within the field (so the bounding box centre is at least 
+    # one sixth the lengths of the relevant sides of the bounding box from the field edge).
+    # This means usually at least two thirds of the bounding box
+    # area will lie within the Field. When placed near the corners of the 
+    # Field, at least four ninths of the bounding box area will lie within
+    # the Field.
     def placeTreasure(self, treasure:Treasure):
         self._treasure = treasure;
         self._treasure.placeRandomly(self.width, self.height);

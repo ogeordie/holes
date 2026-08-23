@@ -160,7 +160,7 @@ supplementaryDirectory = HolesDictionary.getSupplementaryDirectoryName();
 # Runs an Experiment on an ExperimentRunner.
 # Success data are generated for the given experiment parameters (including the
 # Player/layout algorithm to use and a TreasureManager which provides the Treasure to use)
-# over a range of number of holes.
+# over a range of numbers of holes.
 # See the ExperimentRunner class for more details.
 # The field is a square of size fieldSize x fieldSize.
 # Optionally, the number of holes at which to start the experiment is startHoles.
@@ -288,7 +288,7 @@ def runRandomisedTreasureExperiment(layoutAlgorithm:str, fieldSize:int, randomis
 # The raw success data is then analysed by this function, computing the "area under the curve"
 # of the success curves specified by each success experiment. Such a computation is done
 # for each layout algorithm for each treasure dimension.
-# The results of this analysis is stored in a csv file whose name is:
+# The results of this analysis are stored in a csv file whose name is:
 # "summary orientation<rotation> fieldsize<fieldSize> siteArea<siteArea> maxholes<maximumHoles>.csv".
 # in the outputDir subdirectory of the data directory.
 # The area under the curve is approximated by summing the success rates for each number
@@ -611,7 +611,7 @@ def generateRandomisedTreasureFieldSizeGraphs() -> None:
 
 # Generates a table showing the number of holes needed to achieve success rates
 # of 85%, 90%, and 100% using data from the success experiments for the layout
-0# algorithms used in those experiments. Data are included for horizontal and
+# algorithms used in those experiments. Data are included for horizontal and
 # vertical treasure orientations and several elongation ratios.
 # Assumes that data are in the success subdirectory of the data directory.
 # fieldSize and siteArea are as provided.
@@ -713,7 +713,7 @@ class MyProcess(multiprocessing.Process):
     # seed is the random seed to set for python random number generator,
     # which needs to be set in each new process to allow reproducibility.
     # Best practice is for seed to be different each time this is created,
-    # and separated by at least 1000 from other values
+    # and separated by at least 1000 from other values.
     def __init__(self, seed:int, function, *args, **kwargs):
         super().__init__();
         self.seed = seed;
@@ -739,11 +739,12 @@ class MyProcess(multiprocessing.Process):
 # is a "summary" of success data for one layout algorithm (given a siteArea, fieldSize,
 # treasure elongation ratio, and orientation), being the area under the curve of that success experiment
 # (approximated by summing the success rates over all numbers of holes from 1 to a number
-# greater than the maximum number any algorithm needs to reach 100% success rate).
+# greater than the maximum number any algorithm needs to reach 100% success rate). However
+# this function only generates the raw success data.
 # These data are also used in the low intensity summary analysis (small number of holes).
 # Data is stored in the dir subdirectory of the data directory, in the filenames specified
 # in the comments for the get...FileName() functions (above).
-# After calling this function, the data can be graphed using generateSummaryGraph().
+# After calling this function, the data can be analysed and graphed using generateSummaryGraph().
 # seed is the random number generator seed with which to begin.
 def generateSummaryData(fieldSize:int, siteArea:int, shortSides:list, rotation:float, seed:int, dir:str = summaryDirectory) -> None:
     progress_columns = (
@@ -780,8 +781,7 @@ def generateSummaryData(fieldSize:int, siteArea:int, shortSides:list, rotation:f
             progress2.update(task, advance=10100)
 
 
-# Generates success data for various layout algorithms using a small number of treasure
-# elongation ratios for a number of orientations. Site area is 100.
+# Generates success data for various layout algorithms, for the given values.
 # These data are used in the success analysis, and graphs can be produced by
 # calling generateSuccessGraphs().
 # Data are stored in the successDirectory subdirectory of the data directory,
@@ -908,8 +908,8 @@ def generateLargeRatioData(fieldSize:int, siteArea:int, shortSides:list, rotatio
 
 
 # Generate success data to be used in the rotation summary graphs. Treasures are
-# rectangles of the given elongationRatio. Success data is generated for orientations
-# from -90 degrees to 90 degrees, in steps of 7.5 degrees.
+# rectangles of the given elongationRatio and siteArea. Success data is generated for
+# orientations from -90 degrees to 90 degrees, in steps of 7.5 degrees.
 # seed is the random number generator seed with which to begin.
 def generateRotationData(fieldSize:int, siteArea:int, elongationRatio:float, seed:int):
     progress_columns = (
@@ -1070,7 +1070,7 @@ def goLargeRatioData() -> None:
         seed += 1000;
         # 500:1 ratio at site area 20 doesn't work with the current implementation of the
         # HexagonalLikePlayer. It could be modified to work but for now we just use
-        # a 100:1 ratio.
+        # a maximum of 100:1 ratio.
         # generateLargeRatioData(100, 20, generateShortSides(20, 500, 0.1, 0.2), rotation, seed);
         currentDatetime = datetime.now();
         print(currentDatetime);
@@ -1283,6 +1283,7 @@ def goSupplementalRandomisedTreasureGraphs() -> None:
     generateRandomisedTreasureGraphs(100, True, True)
 
 # note: summary graphs must be generated before calling this function
+# as that analyses raw success data producing summary data.
 def goCrossoverTable() -> None:
     print("generating summary crossover table...");
     generateCrossoverTable(100, 100, ["hexlike", "staggerXY", "randomisedStaggerXY8"]);

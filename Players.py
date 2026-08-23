@@ -17,8 +17,9 @@
 
 # This file defines the abstract class Player and implements several subclasses.
 # A Player is called to play() digging Holes on a Field to find Treasure.
-# Each Player implements a different layout algorithm, such as Hexagonal-like,
-# Random, etc.
+# Each Player implements a layout algorithm, such as Hexagonal-like,
+# Random, etc. StaggerXY and randomisedStaggerXY algorithms are implemented by the
+# HexagonalLikePlayer with appropriate arguments to its constructor.
 
 # The code was only tested with the experiments explored in the articles. It 
 # may not be correct in all circumstances.
@@ -179,7 +180,8 @@ class StaggeredPlayer(Player):
 class HaltonPlayer(Player):
 
     # create the player with the given values
-    # seed is the value to use with the NumPy random number generator.
+    # rng is the numpy random number generator to use (we assume it has been
+    # seeded at some point before this is called).
     def __init__(self, field:Field, holeSize:float, numHoles:int, rng:Generator, border:bool=False):
         self._field = field;
         self._holeSize = holeSize;
@@ -241,7 +243,8 @@ class HaltonPlayer(Player):
 # If the distance between rows is c, the top and bottom borders are c/4 if
 # TBBorder is True.
 # If LRBorder or TBBorder is False, that border will be holeSize/2 as the
-# centre of the hole may fall on a border.
+# centre of the hole may fall on a border. Not all combinations of values
+# of LRBorder and TBBorder are supported.
 # If the border is less than holeSize/2 the algorithm fails (self.layoutError is
 # set to True). This could be modified to set the borders to this minimum value and
 # recalculate the numbers of holes to use with "no" border (actually holeSize/2).
@@ -462,7 +465,8 @@ class HexagonalPlayer(HexagonalLikePlayer):
 #
 # For efficiency considerations the field is divided into buckets
 # of length and width one fiftieth of the field, and holes in each bucket
-# stored in a 2-D list.
+# stored in a 2-D list (at some point this functionality could be moved
+# to the Field class).
 #
 # Assumes a square Field.
 class RandomPlayer(Player):

@@ -127,7 +127,7 @@ class Experiment(ABC):
         pass;
     
     # the filename to output a printed field to if ExperimentRunner.printExperiment() is called.
-    # Doesn't include suffix.
+    # Doesn't include suffix or "printedFields" directory (which is assumed).
     # If holesDug is None it is omitted.
     @abstractmethod
     def getPrintedFieldFileName(self, holesDug:int) -> str:
@@ -139,7 +139,7 @@ class Experiment(ABC):
         pass;
 
     # get the Player that implements the layout algorithm chosen for
-    # the experiment. For "Size Matters" this was always a HexagonalLikePlayer.
+    # the experiment.
     @abstractmethod
     def getPlayer(self, field:Field, holes:int) -> Player:
         pass;
@@ -298,6 +298,7 @@ class ExperimentRunner:
                     numRepeats = self.numRepeats;
 
                 for repeats in range(0, numRepeats):
+                    
                     self.createFieldAndPlaceTreasure();
 
                     player = self.mExperiment.getPlayer(self.field, holes);
@@ -423,8 +424,8 @@ def testBorders():
     field.placeTreasure(treasure);
     player = HexagonalLikePlayer(field, 0.5, 8000, True, True, True, 8, TBBorder = True);
     # player = HexagonalPlayer(field, 0.5, 2000, False);
-    # player = RandomPlayer(field, 0.5, 10000, False);
-    # player = HaltonPlayer(field, 0.5, 10000, np.random.default_rng(12345), False);
+    # player = RandomPlayer(field, 0.5, 5000, True);
+    # player = HaltonPlayer(field, 0.5, 5000, np.random.default_rng(12345), True);
 
 
     # Note, returnAfterHit is False
@@ -461,4 +462,4 @@ def testBordersOfField(field:Field, printBorders:bool = True):
 
 
 if __name__ == "__main__":
-    print("SizeMattersExperiments.py and LayoutExperiments.py are the main files for this project");
+    print("LayoutExperiments.py is the main files for this project");

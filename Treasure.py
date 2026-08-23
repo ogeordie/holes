@@ -48,8 +48,11 @@ class Treasure(ABC):
     # used in "Layout Matters") lie partially within the Field. In this case
     # at least two thirds of at least two sides of the the treasure's bounding
     # box lie within the field (the centre of the bounding box is then at least
-    # one sixth the length of the relevant bounding box side from the edge
-    # of the field).
+    # one sixth the lengths of the relevant bounding box sides from the edge
+    # of the field). This means usually at least two thirds of the bounding box
+    # area will lie within the Field. When placed near the corners of the 
+    # Field, at least four ninths of the bounding box area will lie within
+    # the Field.
     @abstractmethod
     def placeRandomly(self, fieldWidth:int, fieldHeight:int) -> None:
         pass;
@@ -59,7 +62,8 @@ class Treasure(ABC):
     def intersectsHole(self, hole:Hole) -> bool:
         pass;
 
-    # Print the details of this Treasure to file
+    # Print the details of this Treasure to file in the format
+    # specified in CreateFieldImage.py file comments.
     @abstractmethod
     def printTreasure(self, file) -> None:
         pass;
@@ -87,9 +91,10 @@ class TreasureManager(ABC):
 class RectangularTreasure(Treasure):
 
     # Create the RectangularTreasure with the given dimensions and rotation.
-    # Rotation is counter-clockwise from horizontal.
+    # Rotation is counter-clockwise from horizontal (note that (0,0) is
+    # the top left of the Field).
     # If whollyWithinField, the treasure lies wholly within the field.
-    # Otherwise partially as specified in the Treasure.placeRandomly()
+    # Otherwise partially as described in the Treasure.placeRandomly()
     # comments.
     def __init__(self, longSide:float, shortSide:float, rotation:float, whollyWithinField:bool = False):
         self._longSide = longSide;
@@ -133,6 +138,7 @@ class RectangularTreasure(Treasure):
             self._centreX = xRandom * (fieldWidth - (2/6) * boundingWidth) + (1/6) * boundingWidth;
             self._centreY = yRandom * (fieldHeight - (2/6) * boundingHeight) + (1/6) * boundingHeight;
 
+        # for a rectangle the centre of the bounding box doesn't change with rotation
         shiftX = self._centreX - self._initialCentre[0];
         shiftY = self._centreY - self._initialCentre[1];
         shiftedVertices = [(v[0] + shiftX, v[1] + shiftY) for v in self._initialVertices];
@@ -188,7 +194,7 @@ class RectangularTreasure(Treasure):
 # As the number of artefacts can be large, they are stored as a grid of data parcels
 # in self._artefacts. self._artefacts[i][j] contains a DataParcel of artefacts. An
 # artefact at location a,b (floats) is stored in self._artefacts[floor(a)][floor(b)]
-# and so can be located easily.
+# and so can be located effieciently.
 #
 # It also allows this treasure definition to be placed at a position on a field,
 # rather than a field having to transpose each artefact.
@@ -406,7 +412,9 @@ class PolygonTreasure(Treasure):
 
     # Read the given shapfile files and create the polygon normalised
     # to (0,0). The shapefile is assumed to define a polygon that is
-    # vertically oriented.
+    # vertically oriented. If whollyWithinField, the treasure lies wholly
+    # within the field. Otherwise partially as specified in the
+    # Treasure.placeRandomly() comments.
     def __init__(self, fileName:str, rotation:float=0, whollyWithinField:bool = False):
         sf = shapefile.Reader(HolesDictionary.getCaseStudiesDataDirectoryName() + "/" + fileName);
         shapes = sf.shapes();
@@ -426,14 +434,6 @@ class PolygonTreasure(Treasure):
         horizontalPoints = [];
         for i in range(len(self._mPoints)):
             point = self._mPoints[i];
-            # if point[0] < minX or minX == -1:
-            #     minX = point[0];
-            # if point[1] < minY or minY == -1:
-            #     minY = point[1];
-            # if point[0] > maxX:
-            #     maxX = point[0];
-            # if point[1] > maxY:
-            #     maxY = point[1]
             horizontalPoints.append((-1*point[1], point[0]));
         
         for j in range(len(horizontalPoints)):
@@ -458,7 +458,9 @@ class PolygonTreasure(Treasure):
 
     # Place the treasure on a Field of the given dimensions in a random position.
     # Rotate the polygon and set the bounding box. The treasure lies partially
-    # within the field as described in Treasure.placeRandomly() comments.
+    # within the field as described in Treasure.placeRandomly() comments
+    # unless self._whollyWithinField is True in which case is lies wholly
+    # within the field. The treasure is stored in self._polygon.
     def placeRandomly(self, fieldWidth:int, fieldHeight:int) -> None:
         q = rotate(self._originalPolygon, -1*self._rotation);
         qBounds = q.bounds;
@@ -487,7 +489,7 @@ class PolygonTreasure(Treasure):
         self._maxBoundingY = self._bounds[3];
 
 
-    # Returns True iff hole intersects this polygon.
+    # Returns True iff hole intersects this treasure.
     def intersectsHole(self, hole:Hole) -> bool:
         holeLeft = hole.centreX - hole.width / 2;
         holeRight = hole.centreX + hole.width / 2;
@@ -563,7 +565,9 @@ class CircularTreasure(Treasure):
 
 # A manager of a RectangularTreasure
 class RectangularTreasureManager(TreasureManager):
-    # The rectangular treasure will have these parameters
+    # The rectangular treasure will have these parameters. If whollyWithinField,
+    # the Treasure will be placed wholly within the field, otherwise partially
+    # as described in Treasure.placeRandomly() comments.
     def __init__(self, longSide:float, shortSide:float, rotation:float, whollyWithinField:bool = False):
         self._longSide = longSide;
         self._shortSide = shortSide;

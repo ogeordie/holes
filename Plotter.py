@@ -345,8 +345,7 @@ def plotPolygonSuccessExperiment(fieldSize:int, description:str, outputFileName:
 # Data are assumed to be in the "success" subdirectory of the data directory.
 # minX, maxX, minY, and maxY are the minimum and maximum values for the
 # x and y axes respectively.
-# The graph is saved in a file named:
-# "success <orientation> ratio <ratio> fieldsize<fieldSize> siteArea<siteArea>.png".
+# The graph is saved in a file named outputFileName.
 def plotSuccessExperiment(fieldSize:int, treasureShortSide:float, treasureLongSide:float, treasureRotation:float, siteArea:int, layoutAlgorithms:list, outputFileName:str, minX = None, maxX:int = None, minY = None, maxY = None):
     fileStart = "data/" + HolesDictionary.getSuccessDirectoryName() + "/" +str(treasureLongSide) + "x" + str(treasureShortSide) + "@" + str(treasureRotation) + "rectangle ";
     fileEnd = " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv";
@@ -371,7 +370,7 @@ def plotFieldSizeExperiment(siteArea:int, ratio:int, rotation:float, layoutAlgor
     outputFileName = "graphs/supplemental/" + HolesDictionary.getSuccessDirectoryName() + "/field sizes for " + HolesDictionary.lookup(layoutAlgorithm) + " orientation" + str(rotation) + " siteArea" + str(siteArea) + ".png";
     orientation = HolesDictionary.orientationLabel(rotation);
     title = HolesDictionary.lookup(layoutAlgorithm, True) + " at Different Field Sizes\nSite Area " + str(siteArea) + "m\u00b2, " + orientation + " Orientation";
-    _plotFieldSizeExperiment([50, 100, 200], siteArea, fileStart, layoutAlgorithm, outputFileName, title);
+    _plotFieldSizeExperiment([50, 100, 200], siteArea, fileStart, outputFileName, title);
 
 
 # As for plotFieldSizeExperiment(), but for randomised treasure data (so no site area,
@@ -382,15 +381,16 @@ def plotRandomisedTreasureFieldSizeExperiment(layoutAlgorithm, maxX = None):
     fileStart = "data/" + HolesDictionary.getRandomisedTreasureDirectoryName() + "/randomisedtreasure " + layoutAlgorithm;
     outputFileName = "graphs/supplemental/" + HolesDictionary.getRandomisedTreasureDirectoryName() + "/field sizes for randomised treasure " + HolesDictionary.lookup(layoutAlgorithm) + ".png";
     title = HolesDictionary.lookup(layoutAlgorithm, True) + " at Different Field Sizes\nRandomised Site";
-    _plotFieldSizeExperiment([100, 150, 200], None, fileStart, layoutAlgorithm, outputFileName, title, maxX = 600);
+    _plotFieldSizeExperiment([100, 150, 200], None, fileStart, outputFileName, title, maxX = 600);
 
 
 # Does the work of the plotting field size experiments. A graph is saved to outputFileName showing
-# the performance of a layout algorithm at each of fieldSizes. siteArea can be None to allow for
+# the performance of a layout algorithm at each of fieldSizes with the x axis adjusted to
+# number-of-holes * 100^2 / field area (which is fieldsize^2). siteArea can be None to allow for
 # random treasure data. fileStart is the beginning of the data file name for all field sizes,
-# and field size and (possibly) site area are appended to get each data file name.
-# The x axis is number-of-holes * 100^2 / field area (which is fieldsize^2).
-def _plotFieldSizeExperiment(fieldSizes:list, siteArea:int, fileStart:str, layoutAlgorithm:str, outputFileName, title, maxX = None):
+# and field size and (possibly) site area are appended to get each data file name. The layout
+# algorithm is the one described in fileStart.
+def _plotFieldSizeExperiment(fieldSizes:list, siteArea:int, fileStart:str, outputFileName, title, maxX = None):
     fig = plt.figure();
     ax1 = fig.add_subplot(111);
 
@@ -444,7 +444,7 @@ def _saveTableDataToCsv(fileName:str, data:list) -> None:
                     file.write("\n");
 
 
-# Adds data for a layoutAlgorithm to the given data list, being the number of holes
+# Adds a row of data for a layoutAlgorithm to the given data list, being the number of holes
 # needed to reach the success thresholds of 80%, 95%, and 100%.
 # The given fileName is assumed to contain success data for the algorithm, which includes
 # the relative path starting with (and including) the data directory.
@@ -654,7 +654,7 @@ def plotCostGraph(fieldSize:int, treasureShortSide:float, treasureLongSide:float
 # elongation ratio, over 1 to maxHoles holes. The file is looked for in the "data/<dir>" directory
 # and should not have a suffix.
 # The graph is stored in outputFileName.png in the "graphs/<outputDir>" directory (or if outputDir
-# is not specified dir is used)
+# is not specified dir is used). If supplemental is True, the output path begins "graphs/supplemental".
 # minFieldName is the name of the layout algorithm whose minimum value is used to calculate
 # the minimum y axis value if zoom is True (unless minY is specified).
 # If fieldNames is specified, it is the list of layout algorithm names to use, which
@@ -776,6 +776,8 @@ def plotSummaryExperiment(csvDataFileName:str, siteArea:int, rotation:float, fie
 # in the csvDataFile against the treasure rotation (from -90 to 90 degrees), with elongationRatio.
 # Each data point is a summary of a success experiment, as for the summary graphs.
 # Data must be in csvDataFileName as generated by generateRotationGraph() in LayoutExperiments.py.
+# The graph is saved to the "graphs/rotation" directory. If supplemental is True, the graph is
+# saved to "graphs/supplemental/rotation" directory.
 def plotRotationExperiment(csvDataFileName:str, fieldSize:int, siteArea:float, elongationRatio:float, maxHoles:int, supplemental:bool = False):
     csvFile = open("data/" + HolesDictionary.getRotationDirectoryName() + "/" + csvDataFileName +".csv", 'r');
     lines = csv.DictReader(csvFile, delimiter=',', skipinitialspace=True);
@@ -825,6 +827,8 @@ def plotRotationExperiment(csvDataFileName:str, fieldSize:int, siteArea:float, e
 
 # Plots success experiments with randomised treasure specifications for the layoutAlgorithms.
 # Data are assumed to exist in the randomtreasure subdirectory of the data directory.
+# Graphs are saved to the "graphs/randomtreasure" directory, unless supplemental is True
+# in which case it is saved to the "graphs/supplemental/randomtreasure" directory.
 def plotRandomisedTreasureExperiment(fieldSize:int, layoutAlgorithms:list, minX = None, maxX = None, addToFile = "", supplemental = False, randomiseRatio:bool = False):
     randomiseRatioString = "";
     if randomiseRatio:
