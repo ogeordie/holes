@@ -669,8 +669,10 @@ class RealWorldTreasureManager(TreasureManager):
 
 # A manager that returns a new RectangularTreasure with random site area,
 # length (from the length of a 1:1 rectangle to that of a 40:1 rectangle given
-# the site area), and orientation. In experiments with randomised treasure specs,
-# getTreasure() should be called in each iteration of the simulation.
+# the site area), and orientation. There is also an option to randomise the ratio
+# directly rather than the length. In experiments with randomised treasure specs,
+# getTreasure() should be called in each iteration of the simulation, as it
+# is different each time.
 class RandomisedTreasureManager(TreasureManager):
     def __init__(self, randomiseRatio:bool):
         self._treasure = None;

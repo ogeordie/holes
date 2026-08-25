@@ -485,7 +485,7 @@ def generateCrossoverTable(fieldSize:int, siteArea:float, layoutAlgorithms:list)
     for rotation in [0, 90]:
         f.write(str(rotation) + ", ");
         for i in range(len(layoutAlgorithms)):
-            dataFileName = "summary orientation" + str(rotation) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + " maxholes" + str(8250) + ".csv";
+            dataFileName = "summary orientation" + str(rotation) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + " maxholes" + str(2250) + ".csv";
             crossover = crossoverPoint(dataFileName, layoutAlgorithms[i]);
             f.write(str(crossover));
             if i != len(layoutAlgorithms) - 1:
@@ -1199,7 +1199,7 @@ def goSupplementalSuccessGraphs() -> None:
 
 def goSummaryGraphs() -> None:
     print("generating summary graphs...");
-    maximumHoles = 8250;
+    maximumHoles = 2250;
     for fieldSize in [100]:
         #for siteArea in [20, 100, 200]:
         for siteArea in [100]:
@@ -1212,6 +1212,13 @@ def goSummaryGraphs() -> None:
 def goSupplementalSummaryGraphs() -> None:
     print("generating supplemental summary graphs...");
     maximumHoles = 8250;
+    fieldSize = 100;
+    for siteArea in [100]:
+        for rotation in [0, 30, 60, 90]:
+            minY = None;
+            maxY = None;
+            generateSummaryGraph(fieldSize, siteArea, generateShortSides(siteArea, 40, 0.1, 0.15), rotation, maximumHoles=maximumHoles, minFieldName="random", zoomCentral=True, showGraph=False, minY = minY, maxY = maxY, supplemental=True);
+    
     siteArea = 100;
     for fieldSize in [65, 200]:
         for rotation in [0, 30, 60, 90]:

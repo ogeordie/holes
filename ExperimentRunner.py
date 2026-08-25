@@ -325,7 +325,7 @@ class ExperimentRunner:
                             # if isinstance(self.treasureManger, RealWorldTreasureManager):
                             #     artefactCount += player.artefactCount;
                             #     numHolesSucceed += player.numHolesSucceed;
-                        
+
                         if holesDug == -1:
                             # this is the first repeat for this value of "holes"
                             holesDug = result[1];
@@ -462,4 +462,4 @@ def testBordersOfField(field:Field, printBorders:bool = True):
 
 
 if __name__ == "__main__":
-    print("LayoutExperiments.py is the main files for this project");
+    print("LayoutExperiments.py is the main file for this project");
