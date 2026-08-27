@@ -819,7 +819,7 @@ def plotRotationExperiment(csvDataFileName:str, fieldSize:int, siteArea:float, e
     supplementalString = "";
     if supplemental:
         supplementalString = "supplemental/"
-    outputFN = "graphs/" + supplementalString + HolesDictionary.getRotationDirectoryName() + "/rotation summary ratio" + str(elongationRatio) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".png"
+    outputFN = "graphs/" + supplementalString + HolesDictionary.getRotationDirectoryName() + "/rotation summary ratio" + str(elongationRatio) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + " maxholes" + str(maxHoles) + ".png"
     outputFile = Path(outputFN);
     outputFile.parent.mkdir(exist_ok=True, parents=True)
     plt.savefig(outputFN);

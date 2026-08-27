@@ -1151,6 +1151,13 @@ def goRotationData(supplementalData = False) -> None:
                 print(currentDatetime);
                 seed += 1000;
                 generateRotationData(100, siteArea, ratio, seed);
+        siteArea = 100;
+        for fieldSize in [65, 200]:
+            for ratio in [1, 5, 20]:
+                currentDatetime = datetime.now();
+                print(currentDatetime);
+                seed += 1000;
+                generateRotationData(fieldSize, siteArea, ratio, seed);
     endDatetime = datetime.now();
     print(endDatetime);
     print("Rotation experiments took", endDatetime-startDatetime);
@@ -1275,9 +1282,20 @@ def goRotationGraphs() -> None:
 
 def goSupplementalRotationGraphs() -> None:
     print("generating supplemental rotation graphs...");
+    maximumHoles = 5000;
+    
+    for siteArea in [100]:
+            for ratio in [1, 5, 20]:
+                generateRotationGraph(100, siteArea, ratio, maximumHoles, supplemental=True);
+    
     for siteArea in [50, 200]:
         for ratio in [1, 5, 20]:
-            generateRotationGraph(100, siteArea, ratio, 2250, supplemental=True);
+            generateRotationGraph(100, siteArea, ratio, maximumHoles, supplemental=True);
+
+    siteArea = 100;
+    for fieldSize in [65, 200]:
+        for ratio in [1, 5, 20]:
+            generateRotationGraph(fieldSize, siteArea, ratio, maximumHoles, supplemental=True);
 
 def goRandomisedTreasureGraphs() -> None:
     print("generating randomised treasure graphs...");
