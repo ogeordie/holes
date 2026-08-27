@@ -207,6 +207,7 @@ later versions, revert to 3.13 if there are any issues.
     folder path.
 
 3.  Place the python files and the other files and folders from the repository in that folder.
+    **NOTE: the files and folders must be directly in the folder you open in VS Code.**
     If using GitHub, you can use it to manage your code if you
     like, including VS Code GitHub integration (but we have not tested this). We have included
     the `.venv` folder in the `.gitignore` file - see step 4. Otherwise you can simply download the
@@ -258,8 +259,8 @@ have missed creating a virtual environment in step 4 above for the folder that's
     (**NOTE: tick the box to add python.exe to your PATH**)
 
 2.  Create a directory (e.g. `~/programming/holes` on Linux and macOS or `C:\programming\holes` on Windows),
-    place the files and folders from the repository in it, and `cd` to it. Make sure the directory you
-    are in contains the python files and all the other files and folders from the repository.
+    place the files and folders from the repository in it, and `cd` to it. **NOTE: Make sure the directory you
+    are in directly contains the python files and all the other files and folders from the repository.**
 
 3.  Create and activate a python virtual environment
     - On bash using macOS Terminal or Linux (run `bash` if it is not the default shell):
