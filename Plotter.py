@@ -187,6 +187,7 @@ def plotExperiment(smallHolesFileName:str, bigHolesFileName:str, outputFileName:
     outputFile = Path("graphs/" + outputFileName);
     outputFile.parent.mkdir(exist_ok=True, parents=True)
     plt.savefig("graphs/" + outputFileName);
+    plt.close();
 
 
 # Plots a table with the given data. data is a 2-D array, with an inner array for each
@@ -226,6 +227,8 @@ def plotTable(data:list, figwidth:float, figheight:float, scalex:float, scaley:f
     plt.savefig("graphs/" + outputFileName);
 
     _saveTableDataToCsv("graphs/" + outputFileName[:-4], data);
+
+    plt.close();
 
 
 # Creates a legend for Layout Matters graphs, showing colours for the various
@@ -543,6 +546,8 @@ def plotHolesForSuccessRatesTable(fieldSize:int, siteArea:int, layoutAlgorithms:
 
     _saveTableDataToCsv(filestem, data);
 
+    plt.close();
+
 
 # Plots a table showing the number of holes needed to acheive success rates of
 # 80%, 95%, and 100% for the various layoutAlgorithms for treasure defined
@@ -591,6 +596,8 @@ def plotPolygonHolesForSuccessRatesTable(fieldSize:int, description:str, layoutA
     plt.savefig(filestem + ".png");
 
     _saveTableDataToCsv(filestem, data);
+
+    plt.close();
 
 
 # Plots a graph showing the additional number of holes needed to increase the
@@ -645,6 +652,7 @@ def plotCostGraph(fieldSize:int, treasureShortSide:float, treasureLongSide:float
     outputFile = Path(outputFileName);
     outputFile.parent.mkdir(exist_ok=True, parents=True)
     plt.savefig(outputFileName);
+    plt.close();
 
 
 # Plots a summary graph of the overall success of various layout algorithms versus the log
@@ -823,6 +831,7 @@ def plotRotationExperiment(csvDataFileName:str, fieldSize:int, siteArea:float, e
     outputFile = Path(outputFN);
     outputFile.parent.mkdir(exist_ok=True, parents=True)
     plt.savefig(outputFN);
+    plt.close();
 
 
 # Plots success experiments with randomised treasure specifications for the layoutAlgorithms.

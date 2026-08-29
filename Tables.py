@@ -302,10 +302,10 @@ def getMaximumDifferenceInSuccessLayout(fieldSize:int, siteArea:int, layoutAlgor
 
 
 # Returns the absolute maximum difference in success between the success results in the two
-# csv files, over hole numbers 1 to maxHoles (unless it is None is which case all numbers
+# csv files, over hole numbers minHoles to maxHoles (unless it is None is which case all numbers
 # of holes to the maximum in either file is used. In this case data are assumed to reach
 # 100% success rate).
-def getMaximumDifferenceInSuccessLayoutFromFiles(file1:str, file2:str, maxHoles = None) -> float:
+def getMaximumDifferenceInSuccessLayoutFromFiles(file1:str, file2:str, minHoles = 1, maxHoles = None) -> float:
     csvFile1 = open(file1);
     csvFile2 = open(file2);
     lines1 = csv.DictReader(csvFile1, delimiter=',', skipinitialspace=True);
@@ -338,7 +338,7 @@ def getMaximumDifferenceInSuccessLayoutFromFiles(file1:str, file2:str, maxHoles 
         exit();
 
     maximum = 0;
-    for hole in range(holeLimit + 1):
+    for hole in range(minHoles, holeLimit + 1):
         if hole > holes1[len(holes1) - 1]:
             success1 = 100;
         else:

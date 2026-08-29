@@ -566,7 +566,7 @@ def generateSupplementalSuccessGraphs():
     longSide = siteArea/shortSide;
     shortSide = round(shortSide, 2);
     longSide = round(longSide, 2);
-    for fieldSize in [50, 200]:
+    for fieldSize in [50]:
         orientation = HolesDictionary.orientationLabel(rotation);
         outputFilename = "graphs/supplemental/" + HolesDictionary.getSuccessDirectoryName() + "/success " + orientation + " ratio " + str(round(ratio)) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".png";
         if fieldSize == 50:
@@ -574,6 +574,47 @@ def generateSupplementalSuccessGraphs():
         elif fieldSize == 200:
             maxX = 1500
         plotSuccessExperiment(fieldSize, shortSide, longSide, rotation, siteArea, HolesDictionary.getLayoutAlgorithms(), outputFilename, maxX = maxX);
+
+    siteArea = 100;
+    for fieldSize in [65, 200]:
+        for rotation in [0, 30, 60, 90]:
+            for ratio in [1, 5, 20]:
+                if rotation - 90 >= 0 and ratio == 1:
+                    # 90 degree rotation of a square site is the same as 0 degrees, etc.
+                    continue;
+                shortSide = math.sqrt(siteArea / ratio);
+                longSide = siteArea/shortSide;
+                shortSide = round(shortSide, 2);
+                longSide = round(longSide, 2);
+                orientation = HolesDictionary.orientationLabel(rotation);
+                outputFilename = "graphs/supplemental/" + HolesDictionary.getSuccessDirectoryName() + "/success " + orientation + " ratio " + str(round(ratio)) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".png";
+                if fieldSize == 65:
+                    maxX = 200;
+                if fieldSize == 200:
+                    maxX = 2000;
+                if fieldSize == 200 and rotation == 30 and ratio == 5:
+                    pass;
+                plotSuccessExperiment(fieldSize, shortSide, longSide, rotation, siteArea, HolesDictionary.getLayoutAlgorithms(), outputFilename, maxX = maxX);
+
+    fieldSize = 100;
+    for siteArea in [20, 200]:
+        for rotation in [0, 30, 60, 90]:
+            for ratio in [1, 5, 20]:
+                if rotation - 90 >= 0 and ratio == 1:
+                    # 90 degree rotation of a square site is the same as 0 degrees, etc.
+                    continue;
+                shortSide = math.sqrt(siteArea / ratio);
+                longSide = siteArea/shortSide;
+                shortSide = round(shortSide, 2);
+                longSide = round(longSide, 2);
+                orientation = HolesDictionary.orientationLabel(rotation);
+                outputFilename = "graphs/supplemental/" + HolesDictionary.getSuccessDirectoryName() + "/success " + orientation + " ratio " + str(round(ratio)) + " fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".png";
+                if siteArea == 20:
+                    maxX = 1500;
+                if siteArea == 200:
+                    maxX = 250;
+                plotSuccessExperiment(fieldSize, shortSide, longSide, rotation, siteArea, HolesDictionary.getLayoutAlgorithms(), outputFilename, maxX = maxX);
+
 
 
 # This is not used in the paper and may not work as is. It is included in case
@@ -683,9 +724,10 @@ def generateMaximumDifferenceInSuccessTable():
 # Data are assumed to exist in the randomisedTreasureDirectory subdirectory of the data
 # directory.
 def printMaximumDifferenceInSucessForRandomTreasure(fieldSize:int):
-    layoutAlgorithms = HolesDictionary.getLayoutAlgorithms();
+    # we exclude the random algorithm
+    layoutAlgorithms = ["hexlike", "staggerXY", "randomisedStaggerXY sd8", "halton"];
     max = 0;
-    max25 = 0;
+    maxSmall = 0;
     maxHoles = 1000;
     for la1 in range(len(layoutAlgorithms)):
         for la2 in range(len(layoutAlgorithms)):
@@ -693,14 +735,14 @@ def printMaximumDifferenceInSucessForRandomTreasure(fieldSize:int):
             if la2 < la1:
                 file1 = "data/" + randomisedTreasureDirectory + "/randomisedtreasure " + layoutAlgorithms[la1] + " fieldsize" + str(fieldSize) + ".csv";
                 file2 = "data/" + randomisedTreasureDirectory + "/randomisedtreasure " + layoutAlgorithms[la2] + " fieldsize" + str(fieldSize) + ".csv";
-                maxDiff = getMaximumDifferenceInSuccessLayoutFromFiles(file1, file2, maxHoles = maxHoles);
+                maxDiff = getMaximumDifferenceInSuccessLayoutFromFiles(file1, file2, minHoles = 65, maxHoles = maxHoles);
                 if maxDiff > max:
                     max = maxDiff;
-                maxDiff25 = getMaximumDifferenceInSuccessLayoutFromFiles(file1, file2, maxHoles=25);
-                if maxDiff25 > max25:
-                    max25 = maxDiff25;
-    print("randomised treasure field size " + str(fieldSize) + " maximum difference over 1 to " + str(maxHoles) + " pits", max);
-    print("randomised treasure field size " + str(fieldSize) + " maximum difference over 1 to 25 pits", max25);
+                maxDiffSmall = getMaximumDifferenceInSuccessLayoutFromFiles(file1, file2, maxHoles=65);
+                if maxDiffSmall > maxSmall:
+                    maxSmall = maxDiffSmall;
+    print("randomised treasure field size " + str(fieldSize) + " maximum difference over 65 to " + str(maxHoles) + " pits excluding Random", max);
+    print("randomised treasure field size " + str(fieldSize) + " maximum difference over 1 to 65 pits excluding Random", maxSmall);
 
 
 # A class that runs a function in a new process. Multiprocessing is
@@ -920,7 +962,7 @@ def generateRotationData(fieldSize:int, siteArea:int, elongationRatio:float, see
     for angle in angles:
         angle = round(angle, 1);
         with Progress(*progress_columns) as progress:    
-            task = progress.add_task("generating ratio = " + str(elongationRatio) + " rotation = " + str(angle) + " site area = " + str(siteArea), total=10100, start=False);
+            task = progress.add_task("generating ratio = " + str(elongationRatio) + " rotation = " + str(angle) + " site area = " + str(siteArea) + " field size = " + str(fieldSize), total=10100, start=False);
 
             shortSide = math.sqrt(siteArea / elongationRatio);
             longSide = siteArea/shortSide;
@@ -1012,7 +1054,8 @@ def generateShortSides(siteArea:int, ratioEnd=40, lowRatioInterval = 0.1, highRa
 # GO DATA FUNCTIONS
 # These functions perform all experiments for the various analyses used in the paper.
 # The corresponding generate...Data() functions are called.
-# Some take a long time. It takes over 16 hours to run all of these on a fast computer.
+# Some take a long time. It takes over 16 hours to run all of these on a fast computer
+# excluding supplemental data.
 # It could take days on an older or slower computer.
 
 # this takes 4.4 hours on a fast computer when supplementalData is False.
@@ -1103,8 +1146,28 @@ def goSuccessData(supplementalData:bool = False) -> None:
         seed = 250000
         siteArea = 100;
         ratio = 5;
-        for fieldSize in [50, 200]:
-                for rotation in [30]:
+        for fieldSize in [50]:
+            for rotation in [30]:
+                seed += 1000;
+                generateSuccessData(fieldSize, siteArea, ratio, rotation, seed);
+
+        siteArea = 100;
+        for fieldSize in [65, 200]:
+            for rotation in [0, 30, 60, 90]:
+                for ratio in [1, 5, 20]:
+                    if rotation - 90 >= 0 and ratio == 1:
+                        # 90 degree rotation of a square site is the same as 0 degrees, etc.
+                        continue;
+                    seed += 1000;
+                    generateSuccessData(fieldSize, siteArea, ratio, rotation, seed);
+
+        fieldSize = 100;
+        for siteArea in [20, 200]:
+            for rotation in [0, 30, 60, 90]:
+                for ratio in [1, 5, 20]:
+                    if rotation - 90 >= 0 and ratio == 1:
+                        # 90 degree rotation of a square site is the same as 0 degrees, etc.
+                        continue;
                     seed += 1000;
                     generateSuccessData(fieldSize, siteArea, ratio, rotation, seed);
     
@@ -1283,7 +1346,7 @@ def goRotationGraphs() -> None:
 def goSupplementalRotationGraphs() -> None:
     print("generating supplemental rotation graphs...");
     maximumHoles = 5000;
-    
+
     for siteArea in [100]:
             for ratio in [1, 5, 20]:
                 generateRotationGraph(100, siteArea, ratio, maximumHoles, supplemental=True);
@@ -1382,8 +1445,8 @@ if __name__ == '__main__':
     # this takes 2.3 hours on a fast computer:
     goRandomisedTreasure = False;
 
-    # SUPPLEMENTAL DATA GENERATION
-    # These takes 0.8 hours on a fast computer:
+    # SUPPLEMENTAL DATA GENERATION - not used in the paper.
+    # this takes 18.7 hours on a fast computer:
     goSupplementalSuccess = False;
     # this takes 3.9 hours on a fast computer:
     goLargeRatio = False;
@@ -1391,7 +1454,7 @@ if __name__ == '__main__':
     goSupplementalSummary = False;
     # this takes 28 hours on a fast computer:
     goSupplementalRandomisedTreasure = False;
-    # this takes 12.2 hours on a fast computer
+    # this takes 40.6 hours on a fast computer
     goSupplementalRotation = False;
 
     goGraphsAndTables = True;
@@ -1410,6 +1473,8 @@ if __name__ == '__main__':
     
     runtime = 0;
 
+    # main experiments
+    # can take 16 hours on a fast computer for all:
     if goSuccess:
         runtime += 1.4;
     if goSummary:
@@ -1422,9 +1487,9 @@ if __name__ == '__main__':
         runtime += 2.3;
 
     # supplemental experiments
-    # can take 72 hours on a fast computer:
+    # can take 120 hours on a fast computer for all:
     if goSupplementalSuccess:
-        runtime += 0.8;
+        runtime += 18.7;
     if goLargeRatio:
         runtime += 3.9;
     if goSupplementalSummary:
@@ -1432,7 +1497,7 @@ if __name__ == '__main__':
     if goSupplementalRandomisedTreasure:
         runtime += 28;
     if goSupplementalRotation:
-        runtime += 12.2;
+        runtime += 40.6;
 
     if goSuccess or goSummary or goCaseStudies or goRotation or goRandomisedTreasure\
         or goLargeRatio or goSupplementalRandomisedTreasure or goSupplementalSummary or goSupplementalSuccess or goSupplementalRotation:

@@ -459,9 +459,9 @@ Data are produced by `goRotationData()` in the `data/rotation` directory.
 The raw data is analysed (producing `rotation` data files) and graphs produced by
 `goRotationGraphs()`. Graphs are stored in the `graphs/rotation` directory.
 
-**6A** is `rotation summary ratio1 fieldsize100 siteArea100.png`   
-**6B** is `rotation summary ratio5 fieldsize100 siteArea100.png`   
-**6C** is `rotation summary ratio20 fieldsize100 siteArea100.png`
+**6A** is `rotation summary ratio1 fieldsize100 siteArea100 maxholes2250.png`   
+**6B** is `rotation summary ratio5 fieldsize100 siteArea100 maxholes2250.png`   
+**6C** is `rotation summary ratio20 fieldsize100 siteArea100 maxholes2250.png`
 
 ### Figure 7: Low Intensity Summary Graphs
 These are summary graphs over 1 to 25 holes.
@@ -475,15 +475,6 @@ to produce graphs in the `graphs/smallnumholes` directory.
 **C** is `summary orientation60 fieldsize100 siteArea100 maxholes25 central.png`   
 **D** is `summary orientation90 fieldsize100 siteArea100 maxholes25 central.png`
 
-### Table 1: Crossover Points
-This shows elongation ratios at which algorithms cross over the performance
-of the Halton algorithm and begin to perform worse than it, for vertical and
-horizontal orientations. It uses raw success data in the `data/summary` directory
-produced by `goSummaryData()`. Calling `goCrossoverTable()` analyses this data,
-producing a `crossover` file in the same directory. The table is then saved to
-the `graphs/summary` directory, and is
-`crossover fieldsize100 siteArea100 table.png` (and `.csv`).
-
 ### Figure 8: Randomised Treasure Success Graphs
 These show the results of the experiments randomising site area, length, and
 orientation. `goRandomisedTreasureData()` creates the data in the `data/randomtreasure`
@@ -491,9 +482,13 @@ directory. `goRandomisedTreasureGraphs()` plots the graphs saved in the
 `graphs/randomtreasure` directory. Graphs are zoomed in to different parts
 of the overall results.
 
-**A** is `randomisedsite fieldsize100 80.png`   
-**B** is `randomisedsite fieldsize100 400.png`   
-**C** is `randomisedsite fieldsize100.png`
+**A** is `randomisedsite fieldsize100 25.png`   
+**B** is `randomisedsite fieldsize100 80.png`   
+**C** is `randomisedsite fieldsize100 200.png`   
+**D** is `randomisedsite fieldsize100 400.png`   
+**E** is `randomisedsite fieldsize100 800.png`  
+**F** is  `randomisedsite fieldsize100 1200.png`  
+**G** is `randomisedsite fieldsize100.png`
 
 ### Figure 9: Case Studies Graphs
 These show success graphs for three case study sites, which are not rectangular.
