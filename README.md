@@ -314,7 +314,10 @@ corresponding `png` files for "Layout Matters" experiments exist in the
 comments. Edit the mode and file name as desired near the top of the file and run:
 `python CreateFieldImage.py` if using the command line instructions, or run the file
 in VS Code. This will display the images and also save them as `png` files in the
-`printedFields` directory.
+`printedFields` directory. **NOTE: If you encounter an error on Linux regarding `MTDev`
+missing, run `sudo apt-get update && sudo apt-get install libmtdev-dev`. If using `WSL`,
+after installing MTDev, exit Linux and run `wsl --shutdown` from Windows Command Prompt.**
+Then try again.
 
 
 ## DEPENDENCIES
