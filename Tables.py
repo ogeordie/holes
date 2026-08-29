@@ -298,7 +298,7 @@ def getMaximumDifferenceInSuccessLayout(fieldSize:int, siteArea:int, layoutAlgor
     fileEnd = "fieldsize" + str(fieldSize) + " siteArea" + str(siteArea) + ".csv"
     file1 = fileStart + " " + layoutAlgorithm1 + " " + fileEnd;
     file2 = fileStart + " " + layoutAlgorithm2 + " " + fileEnd;
-    return getMaximumDifferenceInSuccessLayoutFromFiles(file1, file2, maxHoles);
+    return getMaximumDifferenceInSuccessLayoutFromFiles(file1, file2, maxHoles=maxHoles);
 
 
 # Returns the absolute maximum difference in success between the success results in the two
