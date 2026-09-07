@@ -76,7 +76,9 @@ class StaggeredPlayer(Player):
     # If randomise is true, each hole is shifted in both x and y directions by a random 
     # amount, according to a normal distribution with the original position as mean,
     # and the standard deviation dX/stdDevDivisor for the x direction and dY/stdDevDivisor for
-    # the y direction.
+    # the y direction. Holes on horizontal borders are not shifted in the x direction,
+    # and holes on vertical borders are not shifted in the y direction, so exact borders
+    # are maintained.
     # The borders on the right and bottom of the field are determined by the above parameters
     # but it is assumed that they are equal to the borders on the left and top respectively
     # to 2 decimal places (otherwise an error is printed).
@@ -127,8 +129,9 @@ class StaggeredPlayer(Player):
                     endY = pos_y + dY/2;
                     randomx = random.gauss(pos_x, dX/stdDevDivisor);
                     randomy = random.gauss(pos_y, dY/stdDevDivisor);
-                    # if a hole is on the border, don't shift it away (only
-                    # shift in the other direction)
+                    # If the hole is on a horizontal border (left or right), do not shift
+                    # in the x direction, and if on a vertical border (top or bottom)
+                    # do not shift in the y direction.
                     onLeftBorder = round(pos_x, 2) == round(borderX, 2);
                     onRightBorder = round(pos_x, 2) == round(field.width - borderX, 2);
                     onTopBorder = round(pos_y, 2) == round(borderY, 2) ;
@@ -555,9 +558,12 @@ class RandomPlayer(Player):
                 # only dig the hole if it doesn't intersect another
                 hit = self._field.digHole(self._holeSize, x, y);
                 try:
-                    self._holePositions[math.floor(x/self.bucketWidth)][math.floor(y/self.bucketHeight)].append((x,y));
+                    i = min(math.floor(x/self.bucketWidth), self._numHorizontalParcels - 1);
+                    j = min(math.floor(y/self.bucketHeight), self._numVerticalParcels - 1);
+                    self._holePositions[i][j].append((x,y));
                 except Exception:
-                    print ("error at x =", x, "eachBucketWidth =", self.bucketWidth, "y =", y);
+                    print ("error placing hole in RandomPlayer at x =", x, "bucketWidth =", self.bucketWidth, "y =", y, "bucketHeight =", self.bucketHeight);
+                    exit(1);
                 found = found or hit;
                 # if (hit):
                 #     self.numHolesSucceed += 1;

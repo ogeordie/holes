@@ -412,9 +412,14 @@ class PolygonTreasure(Treasure):
 
     # Read the given shapfile files and create the polygon normalised
     # to (0,0). The shapefile is assumed to define a polygon that is
-    # vertically oriented. If whollyWithinField, the treasure lies wholly
+    # vertically oriented.
+    # If whollyWithinField, the treasure lies wholly
     # within the field. Otherwise partially as specified in the
     # Treasure.placeRandomly() comments.
+    # It is assumed that the polygon has a high extent (i.e. fills most of
+    # its bounding box, rather than having big open curves or long thin arms).
+    # This is to ensure that some of the treasure intersects the field
+    # when the bounding box is partially within the field.
     def __init__(self, fileName:str, rotation:float=0, whollyWithinField:bool = False):
         sf = shapefile.Reader(HolesDictionary.getCaseStudiesDataDirectoryName() + "/" + fileName);
         shapes = sf.shapes();

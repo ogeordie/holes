@@ -209,7 +209,7 @@ def plotTable(data:list, figwidth:float, figheight:float, scalex:float, scaley:f
     # create the table
     table = ax.table(cellText=data[1:], colLabels=data[0], loc='center', cellLoc='left', colColours=ccolors);
     table.auto_set_font_size(False);
-    table.auto_set_column_width(col=list(range(len(data))))
+    table.auto_set_column_width(col=list(range(len(data[0]))));
 
     if (cellHeight != -1):
         for (row, col), cell in table.get_celld().items():
