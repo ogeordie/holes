@@ -18,11 +18,11 @@ If not, see https://www.gnu.org/licenses/gpl-3.0.html.
 ## DESCRIPTION
 This code was used to run the simulations described in the articles "Size Matters:
 Determining Optimal Test Pit Size for Dispersed Archaeological Test Excavation Programs"
-(in preparation) and "Layout Matters: Determining Optimal Test Pit Layout for Dispersed
-Archaeological Test Excavation Programs" (submitted to Journal of Archaeological Science)
-by Geordie Oakes and Andrew McLaren.
+(in preparation) and "Test Pit Layout and Site Geometry: Optimising Dispersed Archaeological
+Test Excavation Programs" (submitted to Journal of Archaeological Science) - referred to
+here and in the code as "Layout" - by Geordie Oakes and Andrew McLaren.
 
-Only "Layout Matters" experiments are currently supported. "Size Matters" details are
+Only "Layout" experiments are currently supported. "Size Matters" details are
 included in this document for future reference.
 
 The file `LayoutExperiments.py` initiates the experiments which save data to `csv` files.
@@ -68,7 +68,7 @@ In particular there is a `RandomisedTreasureManager` which supplies a `Rectangul
 that has a random area, length, and orientation, and so is different on each simulation
 iteration. The other `TreasureManager`s are straighforward. Having a `TreasureManager`
 class allows layout algorithms (`Player`s) and `Treasure` specifications to be mixed
-and matched when creating an `Experiment`. For "Layout Matters" experiments, when
+and matched when creating an `Experiment`. For "Layout" experiments, when
 `Treasure.placeRandomly()` is called by the `Field`, it positions itself so that
 at least two thirds of at least two sides of the `Treasure`'s bounding box lie within
 the `Field`. The bounding box centre is then at least one sixth the length of the relevant
@@ -96,13 +96,12 @@ a row for left and right borders, and 1/4 of the distance between rows for
 top and bottom borders. Random and Halton use margins that would be used on
 a square grid layout (with margins) with the same number of holes.
 
-See the document `size matters and layout matters layout algorithms.pdf`
-for details of the layout algorithms.
+See the document `holes layout algorithms.pdf` for details of the layout algorithms.
 
 The inner simulation procedure is run 10000 times for each number of holes in "Size Matters"
 (i.e. there are 10000 digs for each number of holes), with the treasure placed randomly each
-time. In "Layout Matters" the procedure is run 8000 times for success experiments and 4000
-times for summary experiments (see [LAYOUT MATTERS EXPERIMENTS](#LAYOUT-MATTERS-EXPERIMENTS)
+time. In the "Layout" article the procedure is run 8000 times for success experiments and
+4000 times for summary experiments (see [LAYOUT EXPERIMENTS](#LAYOUT-EXPERIMENTS)
 below for descriptions of these). The lower number is used for summary experiments as
 the experiments take a very long time and for summary purposes this suffices. For smaller
 numbers of holes the procedure is run 15000 times as there is more variation in results.
@@ -120,11 +119,11 @@ the method to return as soon as treasure if found. However note that the actual 
 holes returned is the number of holes that would have been dug if `returnAfterHit` was
 `False` (i.e. the number of holes determined by the layout algorithm).
 
-The main file is `LayoutExperiments.py` for "Layout Matters" experiments.
+The main file is `LayoutExperiments.py` for "Layout" experiments.
 These files trigger the various experiments and the generation
 of graphs and tables. Note that one can set the "go" variables in these files to
 control what is triggered, for example if one wishes to use pre-generated data rather
-than generating it which can take over 16 hours on a fast computer for "Layout Matters"
+than generating it which can take over 16 hours on a fast computer for "Layout"
 experiments (excluding the "supplemental" experiments not included in the paper
 which can take over 72 hours).
 
@@ -286,7 +285,7 @@ have missed creating a virtual environment in step 4 above for the folder that's
     ```
     python LayoutExperiments.py
     ```
-    for "Layout Matters" experiments.
+    for "Layout" experiments.
 
     Note that `"go"` variables can be set in these files to control what they do.
     By default they produce the graphs and tables using pre-generated data,
@@ -308,7 +307,7 @@ To create a graphical image of a field, you first print the field to the
 `printedFields` directory (e.g. by setting `goPrintExperiments` to `True` in
 `LayoutExperiments.py` and running the file).
 Printed fields are saved in `hpf` files. Example printed field files and
-corresponding `png` files for "Layout Matters" experiments exist in the
+corresponding `png` files for "Layout" experiments exist in the
 `printedFields` directory.
 `CreateFieldImage.py` runs in two modes as described above and in the file
 comments. Edit the mode and file name as desired near the top of the file and run:
@@ -360,7 +359,7 @@ These are the files in the `holes` distribution:
     the experiments and produces graphs and tables used in "Size Matters" article.
     NOTE: this is not currently supported.
 -   `LayoutExperiments.py` is a main file for running simulations and reproduces
-    the experiments and produces graphs and tables used in "Layout Matters" article.
+    the experiments and produces graphs and tables used in the "Layout" article.
 -   `Hole.py` implements the `Hole` class.
 -   `Field.py`: implements the `Field` class.
 -   `Players.py`: implements the various `Player`s (implementing layout algorithms).
@@ -380,12 +379,12 @@ These are the files in the `holes` distribution:
 -   `TreasureUML.png`: a UML diagram of the parts of Holes dealing with `Treasure`
 -   `ExperimentsUML.png`: a UML diagram of the `Experiment` implementations.
 -   `LICENSE`: the GPL v3 license.
--   `size matters and layout matters layout algorithms.pdf`: Description of the layout
+-   `holes layout algorithms.pdf`: Description of the layout
     algorithms implemented in `Players.py`.
 -   `real world site specifications` folder: contains the data used in the detection
     experiments reported in "Size Matters"
 -   `case studies site specifications` folder: contains the case study polygons in
-    `shapefile` format used in "Layout Matters".
+    `shapefile` format used in the "Layout" article.
 -   `printedFields` folder is where fields are printed when `ExperimentRunner.printExperiment()`
     is called. They can be displayed with `CreateFieldImage.py`.
 -   `data/sizematters` folder: a placeholder for "Size Matters" experiment results,
@@ -402,7 +401,7 @@ These are the files in the `holes` distribution:
     and run the file to regenerate these (note: set the other go variables
     to False to avoid regenerating the data).
 
-## LAYOUT MATTERS EXPERIMENTS
+## LAYOUT EXPERIMENTS
 
 These experiments compare various layout algorithms in various ways. The treasures (sites)
 are rectangles with various elongation ratios, e.g. 1:1 (square),

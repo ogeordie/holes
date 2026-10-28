@@ -17,7 +17,8 @@
 
 # See the "README.md" file for information, and installation and usage instructions.
 
-# This is a main file for the Holes project, for the "Layout Matters" article.
+# This is a main file for the Holes project, for the paper "Test Pit Layout and Site Geometry:
+# Optimising Dispersed Archaeological Test Excavation Programs" (referred to here as "Layout").
 # It contains code to run Experiments on the ExperimentRunner implemented
 # in ExperimentRunner.py. It also contains code to plot graphs and tables using Plotter.py.
 # Tables contain results of data analysis using Tables.py.
@@ -46,7 +47,7 @@ import os
 import numpy as np
 
 
-# A base Experiment for Layout Matters experiments
+# A base Experiment for "Layout" experiments
 class BasicLayoutExperiment(BasicExperiment):
 
     def __init__(self, treasureManager:TreasureManager):

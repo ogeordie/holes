@@ -21,6 +21,9 @@
 # digs Holes to see if the Treasure is found.
 
 # NOTE: The origin (0,0) is defined as the top left of the field.
+
+# The paper "Test Pit Layout and Site Geometry: Optimising Dispersed
+# Archaeological Test Excavation Programs" is refered to here as "Layout".
  
 from Treasure import Treasure
 from Hole import Hole
@@ -44,7 +47,7 @@ class Field:
         self.adjustedHoleAtBorder = False;
         self._treasure = None;
 
-    # Place treasure on the field at a random location. For "Layout Matters" experiments,
+    # Place treasure on the field at a random location. For "Layout" experiments,
     # the treasure lies so that at least two thirds of at least two sides of its
     # bounding box lie within the field (so the bounding box centre is at least 
     # one sixth the lengths of the relevant sides of the bounding box from the field edge).

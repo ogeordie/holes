@@ -24,6 +24,8 @@
 #      for various experimental data, graphs, and tables.
 #    - a dictionary of colours to use when plotting graphs for the various algorithms
 
+# The paper "Test Pit Layout and Site Geometry: Optimising Dispersed
+# Archaeological Test Excavation Programs" is refered to here as "Layout".
 
 class HolesDictionary:
     
@@ -121,7 +123,7 @@ class HolesDictionary:
         return "real world site specifications";
 
     # This is the directory containing the polygons specified in shapefile format
-    # (zip files) used in the case studies (polygon) experiments in "Layout Matters"
+    # (zip files) used in the case studies (polygon) experiments in the "Layout" article
     @staticmethod
     def getCaseStudiesDataDirectoryName() -> str:
         return "case studies site specifications"

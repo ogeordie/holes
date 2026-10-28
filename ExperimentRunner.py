@@ -37,6 +37,8 @@ from Players import Player, HexagonalLikePlayer, HexagonalPlayer, HaltonPlayer, 
 from Treasure import TreasureManager, RectangularTreasure, RealWorldTreasureManager, CircularTreasureManager, RectangularTreasureManager, PolygonTreasureManager, RandomisedTreasureManager
 import numpy as np
 
+# The paper "Test Pit Layout and Site Geometry: Optimising Dispersed
+# Archaeological Test Excavation Programs" is refered to here as "Layout".
 
 # A class that describes an experiment to be run in the ExperimentRunner.
 class Experiment(ABC):
@@ -48,7 +50,7 @@ class Experiment(ABC):
     
     # the length and width of the square holes to be dug.
     # Values of 0.5m and 1m were used in the "Size Matters" article
-    # and 0.5m in "Layout Matters"
+    # and 0.5m in the "Layout" article
     @abstractmethod
     def  getHoleSize(self) -> float:
         pass;
@@ -56,7 +58,7 @@ class Experiment(ABC):
     # the number by which the number of holes is incremented each time
     # round the simulation.
     # 1 was used in the "Size Matters" article
-    # In "Layout Matters", RandomPlayer and HaltonPlayer experiments
+    # In the "Layout" article, RandomPlayer and HaltonPlayer experiments
     # had a value of 10, the rest 1
     @abstractmethod
     def getHoleIncrement(self) -> int:
@@ -65,7 +67,7 @@ class Experiment(ABC):
     # the number by which the number of holes is incremented each time round
     # the simulation for smaller numbers of holes, until the
     # getSmallNumHolesIncrementCutoff() is reached.
-    # In "Layout Matters", Random and Halton experiments had a value of 3
+    # In the "Layout" article, Random and Halton experiments had a value of 3
     @abstractmethod
     def getSmallNumHolesIncrement(self) -> int:
         pass;

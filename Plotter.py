@@ -21,6 +21,9 @@
 # This file contains code to plot graphs and tables using the matplotlib library.
 # It expects data as created by ExperimentRunner.py and Tables.py.
 
+# The paper "Test Pit Layout and Site Geometry: Optimising Dispersed
+# Archaeological Test Excavation Programs" is refered to here as "Layout".
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
@@ -231,7 +234,7 @@ def plotTable(data:list, figwidth:float, figheight:float, scalex:float, scaley:f
     plt.close();
 
 
-# Creates a legend for Layout Matters graphs, showing colours for the various
+# Creates a legend for "Layout" graphs, showing colours for the various
 # layout algorithms.
 def createLegends():
     plt.plot([], [], label='Hexagonal-like', color = HolesDictionary.getColour("hexlike"));

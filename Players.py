@@ -21,6 +21,8 @@
 # Random, etc. StaggerXY and randomisedStaggerXY algorithms are implemented by the
 # HexagonalLikePlayer with appropriate arguments to its constructor.
 
+# See the document "holes layout algorithms.pdf" for details of the layout algorithms.
+
 # The code was only tested with the experiments explored in the articles. It 
 # may not be correct in all circumstances.
 
@@ -226,9 +228,14 @@ class HaltonPlayer(Player):
         return found, self._numHoles;
 
 
-# A Player that uses the hexagonal-like layout algorithm
-# (see the "Layout Matters" paper and the "size matters and layout matters
-# layout algorithms.pdf" document).
+# A Player that uses the hexagonal-like layout algorithm, the staggerXY
+# algorithm, or the randomisedStaggerXY algorithm, depending on the
+# arguments to the constructor
+# (see the paper "Test Pit Layout and Site Geometry: Optimising Dispersed
+# Archaeological Test Excavation Programs" - referred to here as "Layout" -
+# and the "holes layout algorithms.pdf" document in the repository
+# for details of the layout algorithms).
+#
 # This layout is staggered horizontally - If the distance between holes
 # in the same row is a, every other row is shifted right by a/2.
 # Numbers of holes in a row and the number of rows are chosen

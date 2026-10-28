@@ -45,7 +45,9 @@ class Treasure(ABC):
 
     # Place the treasure on a Field of the given dimensions. Some Treasure
     # implementations lie wholly within the field. Others (including all those
-    # used in "Layout Matters") lie partially within the Field. In this case
+    # used in the paper "Test Pit Layout and Site Geometry: Optimising Dispersed
+    # Archaeological Test Excavation Programs" - referred to here as "Layout")
+    # lie partially within the Field. In this case
     # at least two thirds of at least two sides of the the treasure's bounding
     # box lie within the field (the centre of the bounding box is then at least
     # one sixth the lengths of the relevant bounding box sides from the edge
